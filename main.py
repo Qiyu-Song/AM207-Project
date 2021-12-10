@@ -2,6 +2,7 @@
 
 import numpy as np
 from lib.earthDistances import earthDistances
+from lib.defaults import defaults
 
 INSTRU = 0  # so that data[INSTRU] = instrumental
 
@@ -16,13 +17,16 @@ class DATA:
         self.time_ind = None
 
 
+# options is a dict of priors, MHpars, samplerIterations, preSamplerIterations, useModes, useSpatialCache, sampleCompleteField, all are optional
+
+
 class BARCAST:
     def __init__(self, data, options=None):
         self.data = data
-        if options:
-            self.options = options
-        else:
-            self.options = defaults(data)  # need implementation
+        self.options = options
+        if self.options is None:
+            self.options = {}
+        self.options = defaults(self.options, data)  # need implementation
         self.model = {}  # a dict to restore model
         self.params = [None] * self.options.samplerIterations
         self.fields = None  # will be a sizeofField*samplerIteration matrix later
