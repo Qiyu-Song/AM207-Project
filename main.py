@@ -26,7 +26,7 @@ class BARCAST:
         self.options = options
         if self.options is None:
             self.options = {}
-        self.options = defaults(self.options, data)  # need implementation
+        defaults(self.options, data)
         self.model = {}  # a dict to restore model
         self.params = [None] * self.options.samplerIterations
         self.fields = None  # will be a sizeofField*samplerIteration matrix later
