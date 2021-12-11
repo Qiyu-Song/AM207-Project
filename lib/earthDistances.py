@@ -1,4 +1,5 @@
 # Calculate distances matrix between geographical locations
+# Reference: https://en.wikipedia.org/wiki/Haversine_formula
 import numpy as np
 
 def hav(theta):

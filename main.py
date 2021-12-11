@@ -3,6 +3,7 @@
 import numpy as np
 from lib.earthDistances import earthDistances
 from lib.defaults import defaults
+from lib.initialValues import initialValues
 
 INSTRU = 0  # so that data[INSTRU] = instrumental
 
@@ -28,7 +29,7 @@ class BARCAST:
             self.options = {}
         defaults(self.options, data)
         self.model = {}  # a dict to restore model
-        self.params = [None] * self.options.samplerIterations
+        self.params = [None] * self.options['samplerIterations']
         self.fields = None  # will be a sizeofField*samplerIteration matrix later
 
     def initialize(self):
@@ -52,23 +53,23 @@ class BARCAST:
         self.model['distances'] = earthDistances(self.data[INSTRU].locations)
 
         # Draw initial values for the Bayesian model
-        currentParams, currentField = initialValues(self.data, self.model['timeline'], self.options)  # need implementation
+        currentParams, currentField = initialValues(self.data, self.model, self.options)
 
         # Calculate spatial covariance
-        self.model['spatialCorrMatrix'] = np.exp(-currentParams.phi * self.model['distances'])
+        self.model['spatialCorrMatrix'] = np.exp(-currentParams['phi'] * self.model['distances'])
         self.model['invSpatialCorrMatrix'] = np.linalg.inv(self.model['spatialCorrMatrix'])
 
-        if not self.options.sampleCompleteField:
+        if not self.options['sampleCompleteField']:
             # Discover missing patterns
             self.model['missingPatterns'] = findMissingPatterns(self.data, np.size(self.model['timeline']))  # need implementation
 
             # Calculate temporal covariance matrices for each missing pattern
-            if self.options.useSpatialCache:
+            if self.options['useSpatialCache']:
                 self.model['spatialCovMatrices'], self.model['sqrtSpatialCovMatrices'] = calcSpatialCovariance(
                     self.data, self.model, currentParams)  # need implementation
 
         self.params[0] = currentParams
-        self.fields = np.zeros((np.size(currentField), self.options.samplerIterations))
+        self.fields = np.zeros((np.size(currentField), self.options['samplerIterations']))
 
     def sampler(self):
         # Sample MCMC chain
