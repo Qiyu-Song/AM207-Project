@@ -27,3 +27,4 @@ def calcSpatialCovariances(data, model, params):
         C = model['invSpatialCorrMatrix'] * (1 + params['alpha'] ** 2) / params['sigma2'] + np.diag(C).reshape(-1, 1)
         sqrtCovMtxs[i] = np.linalg.cholesky(C)
         covMtxs[i] = C
+    return covMtxs, sqrtCovMtxs
