@@ -1,6 +1,7 @@
 # This is a Python script of the BARCAST, adapted directly from a MATLAB implementation.
 
 import numpy as np
+import copy
 from lib.earthDistances import earthDistances
 from lib.defaults import defaults
 from lib.initialValues import initialValues
@@ -21,7 +22,7 @@ class DATA:
 class BARCAST:
     def __init__(self, data, options=None):
         # options is a dict containing priors, MHpars, samplerIterations, preSamplerIterations, useModes,
-        # useSpatialCache, sampleCompleteField, all are optional 
+        # useSpatialCache, sampleCompleteField, all are optional
         self.data = data
         self.options = options
         if self.options is None:
@@ -70,7 +71,7 @@ class BARCAST:
                 self.model['spatialCovMatrices'], self.model['sqrtSpatialCovMatrices'] = calcSpatialCovariance(
                     self.data, self.model, self.currentParams)  # need implementation
 
-        self.params[0] = self.currentParams.copy()
+        self.params[0] = copy.deepcopy(self.currentParams)
         self.fields = np.zeros((np.size(self.currentField), self.options['samplerIterations']))
 
     def sampler(self):
@@ -135,9 +136,9 @@ class BARCAST:
                     self.model['spatialCovMatrices'], self.model['sqrtSpatialCovMatrices'] = calcSpatialCovariances(
                         self.data, self.model, self.currentParams)
 
-            self.params[sample] = self.currentParams.copy()
+            self.params[sample] = copy.deepcopy(self.currentParams)
             if sample > self.options['preSamplerIteration']:
-                self.fields[:, :, sample - self.options['preSamplerIteration']] = self.currentField.copy()
+                self.fields[:, :, sample - self.options['preSamplerIteration']] = copy.deepcopy(self.currentField)
 
 
 if __name__ == '__main__':
