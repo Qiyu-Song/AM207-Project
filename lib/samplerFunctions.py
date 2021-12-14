@@ -20,21 +20,23 @@ def sampleTemp0(model, params, priors, nextField):
 
 
 def calcSingleSpatialCovariance(data, model, params, timePattern):
-    pattern = model['missingPatterns']['timePatterns'][timePattern,:]
-    C = np.zeros((np.size(data[INSTRU].locations,1),1))
+    pattern = model['missingPatterns']['timePatterns'][timePattern, :]
+    C = np.zeros((np.size(data[INSTRU].locations, 1), 1))
     for j in range(np.size(pattern)):
-        if pattern[j]==0:
+        if pattern[j] == 0:
             # The data does not cover this pattern
             continue
         inputPattern = model['missingPatterns']['dataPatterns'][j][pattern[j]]
-        if j==1:
+        if j == 1:
             # For instrumental data, pattern contains the indices of the
             # locations that have data for timePattern
-            C[inputPattern] = C[inputPattern] + 1/params['tau2_I']
+            C[inputPattern] = C[inputPattern] + 1 / params['tau2_I']
         else:
-            C[inputPattern['locationIndices']] = C[inputPattern['locationIndices']] + sum(inputPattern['locationMap'],1)*params['Beta_1'][j-1]**2/params['tau2_P'][j-1]
+            C[inputPattern['locationIndices']] = C[inputPattern['locationIndices']] + sum(inputPattern['locationMap'],
+                                                                                          1) * params['Beta_1'][
+                                                     j - 1] ** 2 / params['tau2_P'][j - 1]
 
-    invCC = model['invSpatialCorrMatrix']*(1+params['alpha']**2)/params['sigma2'] + np.diag(C)
+    invCC = model['invSpatialCorrMatrix'] * (1 + params['alpha'] ** 2) / params['sigma2'] + np.diag(C)
     sqInvCC = np.linalg.cholesky(invCC)
     return invCC, sqInvCC
 
@@ -184,11 +186,13 @@ def sampleAutocorrCoeff(model, params, priors, currentField):
 
 def sampleAutocorrMean(model, params, priors, currentField):
     # Sample autocorrelation mean parameter
-    postVar = (np.size(currentField,1)-1)*sum(sum(model['invSpatialCorrMatrix']))/params['sigma2']
-    postVar = 1/(1/priors['mu'][1] + (1-params['alpha'])**2*postVar)
+    postVar = (np.size(currentField, 1) - 1) * sum(sum(model['invSpatialCorrMatrix'])) / params['sigma2']
+    postVar = 1 / (1 / priors['mu'][1] + (1 - params['alpha']) ** 2 * postVar)
 
-    postMean = sum(currentField[:,1:]-params['alpha']*currentField[:,:-1],1)
-    postMean = postVar*((1-params['alpha'])*sum(model['invSpatialCorrMatrix']*postMean)/params['sigma2'] + priors['mu'][0]/priors['mu'][1])
+    postMean = sum(currentField[:, 1:] - params['alpha'] * currentField[:, :-1], 1)
+    postMean = postVar * (
+                (1 - params['alpha']) * sum(model['invSpatialCorrMatrix'] * postMean) / params['sigma2'] + priors['mu'][
+            0] / priors['mu'][1])
 
     mu = postMean + np.sqrt(postVar) * np.random.rand()
     return mu
@@ -196,34 +200,36 @@ def sampleAutocorrMean(model, params, priors, currentField):
 
 def sampleSpatialVariance(model, params, priors, currentField):
     # Sample autocorrelation mean parameter
-    postAlpha = (np.size(currentField)-np.size(currentField,0))/2 + priors['sigma2'][0]
+    postAlpha = (np.size(currentField) - np.size(currentField, 0)) / 2 + priors['sigma2'][0]
 
-    tDiff = currentField[:,1:] - params['alpha']*currentField[:,:-1] - (1-params['alpha'])*params['mu']
-    postBeta = priors['sigma2'][1] + sum(sum((model['invSpatialCorrMatrix']*tDiff).dot(tDiff)))/2
+    tDiff = currentField[:, 1:] - params['alpha'] * currentField[:, :-1] - (1 - params['alpha']) * params['mu']
+    postBeta = priors['sigma2'][1] + sum(sum((model['invSpatialCorrMatrix'] * tDiff).dot(tDiff))) / 2
 
-    sigma2 = min(50, 1/np.random.gamma(postAlpha, 1/postBeta))
+    sigma2 = min(50, 1 / np.random.gamma(postAlpha, 1 / postBeta))
     return sigma2
 
 
 def sampleSpatialCovarianceRange(model, params, priors, mhparams, currentField):
     # Sample spatial covariance range parameter
 
-    tDiff = currentField[:, 1:] - params['alpha']*currentField[:,:-1] - (1-params['alpha'])*params['mu']
+    tDiff = currentField[:, 1:] - params['alpha'] * currentField[:, :-1] - (1 - params['alpha']) * params['mu']
 
     spatCorr = model['spatialCorrMatrix']
     logphi = np.log(params['phi'])
-    value = -1/(2*priors['phi'][1])*(logphi - priors['phi'][0])**2 - 1/(2*params['sigma2'])*sum(sum(tDiff.dot(np.linalg.lstsq(spatCorr,tDiff))))
+    value = -1 / (2 * priors['phi'][1]) * (logphi - priors['phi'][0]) ** 2 - 1 / (2 * params['sigma2']) * sum(
+        sum(tDiff.dot(np.linalg.lstsq(spatCorr, tDiff))))
 
     propVar = np.sqrt(mhparams['log_phi'][0])
-    n = (np.size(currentField,1)-1)/2
+    n = (np.size(currentField, 1) - 1) / 2
 
     for sample in range(mhparams['log_phi'][1]):
         logphiProp = logphi + propVar * np.random.randn()
-        spatCorrProp = np.exp(-np.exp(logphiProp)*model['distances'])
+        spatCorrProp = np.exp(-np.exp(logphiProp) * model['distances'])
 
-        valueProp = -1/(2*priors['phi'][1])*(logphiProp - priors['phi'][0])**2 - 1/(2*params.sigma2)*sum(sum(tDiff.dot(np.linalg.lstsq(spatCorrProp,tDiff))))
+        valueProp = -1 / (2 * priors['phi'][1]) * (logphiProp - priors['phi'][0]) ** 2 - 1 / (2 * params.sigma2) * sum(
+            sum(tDiff.dot(np.linalg.lstsq(spatCorrProp, tDiff))))
 
-        logRatio = valueProp - value + n*np.log(np.linalg.det(np.linalg.lstsq(spatCorrProp,tDiff)))
+        logRatio = valueProp - value + n * np.log(np.linalg.det(np.linalg.lstsq(spatCorrProp, tDiff)))
 
         if np.exp(logRatio) > np.random.rand():
             # Accept proposition
@@ -241,53 +247,56 @@ def sampleInstrumentalErrorVar(data, priors, currentField):
     res = data[INSTRU].value - currentField(data[INSTRU].loc_ind, data[INSTRU].time_ind)
     res = res[~np.isnan(res)]
     res = res.reshape(-1, 1)
-    postBeta = res.transpose().dot(res)/2 + priors['tau2_I'][1]
+    postBeta = res.transpose().dot(res) / 2 + priors['tau2_I'][1]
     # As currentField is completely filled with no NaN's, the size of res
     # equals the number of values in instrumental data
-    postAlpha = np.size(res)/2 + priors['tau2_I'][0]
+    postAlpha = np.size(res) / 2 + priors['tau2_I'][0]
 
-    tau2 = min(50,1/np.random.gamma(postAlpha, 1/postBeta))
+    tau2 = min(50, 1 / np.random.gamma(postAlpha, 1 / postBeta))
     return tau2
 
 
 def sampleProxyErrorVar(data, params, priors, currentField, proxyId):
     # Sample instrumental measurement error variance
-    res = params['Beta_1'][proxyId]*currentField(data[proxyId+1].loc_ind, data[proxyId+1].time_ind)
-    res = data[proxyId+1].value - (res + params['Beta_0'][proxyId])
+    res = params['Beta_1'][proxyId] * currentField(data[proxyId + 1].loc_ind, data[proxyId + 1].time_ind)
+    res = data[proxyId + 1].value - (res + params['Beta_0'][proxyId])
     res = res[~np.isnan(res)]
     res = res.reshape(-1, 1)
-    postBeta = res.transpose().dot(res)/2 + priors['tau2_P'][proxyId,1]
+    postBeta = res.transpose().dot(res) / 2 + priors['tau2_P'][proxyId, 1]
     # As currentField is completely filled with numbers, the size of res
     # equals the number of non-NaN's in instrumental data
-    postAlpha = np.size(res)/2 + priors['tau2_P'][proxyId,0]
+    postAlpha = np.size(res) / 2 + priors['tau2_P'][proxyId, 0]
 
-    tau2 = min(5,1/np.random.gamma(postAlpha, 1/postBeta))
+    tau2 = min(5, 1 / np.random.gamma(postAlpha, 1 / postBeta))
     return tau2
 
 
 def sampleProxyMultiplier(data, params, priors, currentField, proxyId):
     # Sample proxy measurement multiplier
-    field = currentField(data[proxyId+1].loc_ind, data[proxyId+1].time_ind)
-    mask = ~np.isnan(data[proxyId+1].value)
+    field = currentField(data[proxyId + 1].loc_ind, data[proxyId + 1].time_ind)
+    mask = ~np.isnan(data[proxyId + 1].value)
     field = field[mask]
     field = field.reshape(-1, 1)
-    data = data[proxyId+1].value[mask]
+    data = data[proxyId + 1].value[mask]
     data = data.reshape(-1, 1)
 
-    postVar = 1/(1/priors['Beta_1'][proxyId,1] + field.transpose().dot(field)/params['tau2_P'][proxyId])
-    postMean = postVar * (priors['Beta_1'][proxyId,0]/priors['Beta_1'][proxyId,1] + (data-params['Beta_0'][proxyId]).transpose().dot(field)/params['tau2_P'][proxyId])
+    postVar = 1 / (1 / priors['Beta_1'][proxyId, 1] + field.transpose().dot(field) / params['tau2_P'][proxyId])
+    postMean = postVar * (priors['Beta_1'][proxyId, 0] / priors['Beta_1'][proxyId, 1] + (
+                data - params['Beta_0'][proxyId]).transpose().dot(field) / params['tau2_P'][proxyId])
 
-    beta1 = postMean + np.sqrt(postVar)*np.random.randn()
+    beta1 = postMean + np.sqrt(postVar) * np.random.randn()
     return beta1
 
 
 def sampleProxyAddition(data, params, priors, currentField, proxyId):
     # Sample proxy measurement addition parameter
-    res = data[proxyId+1].value - params['Beta_1'][proxyId]*currentField(data[proxyId+1].loc_ind, data[proxyId+1].time_ind)
+    res = data[proxyId + 1].value - params['Beta_1'][proxyId] * currentField(data[proxyId + 1].loc_ind,
+                                                                             data[proxyId + 1].time_ind)
     res = res[~np.isnan(res)]
 
-    postVar = 1/(1/priors['Beta_0'][proxyId,1] + np.size(res)/params['tau2_P'][proxyId])
-    postMean = postVar*(priors['Beta_0'][proxyId,0]/priors['Beta_0'][proxyId,1] + sum(res)/params['tau2_P'][proxyId])
+    postVar = 1 / (1 / priors['Beta_0'][proxyId, 1] + np.size(res) / params['tau2_P'][proxyId])
+    postMean = postVar * (
+                priors['Beta_0'][proxyId, 0] / priors['Beta_0'][proxyId, 1] + sum(res) / params['tau2_P'][proxyId])
 
     beta0 = postMean + np.sqrt(postVar) * np.random.randn()
     return beta0
@@ -296,24 +305,25 @@ def sampleProxyAddition(data, params, priors, currentField, proxyId):
 def calcSpatialCovariancescalcSpatialCovariances(data, model, params):
     # Calculates the temporal covariance matries
     # Done for each pattern of missing data
-    covMtxs = [None] * np.size(model['missingPatterns']['timePatterns'],1)
+    covMtxs = [None] * np.size(model['missingPatterns']['timePatterns'], 1)
     sqrtCovMtxs = copy.deepcopy(covMtxs)
-    n = np.size(data[INSTRU].locations,1)
-    for i in range(np.size(model['missingPatterns']['timePatterns'],1)):
-        C = np.zeros((n,1))
-        for j in range(np.size(model['missingPatterns']['timePatterns'],2)):
-            if model['missingPatterns']['timePatterns'][i,j]==0:
+    n = np.size(data[INSTRU].locations, 1)
+    for i in range(np.size(model['missingPatterns']['timePatterns'], 1)):
+        C = np.zeros((n, 1))
+        for j in range(np.size(model['missingPatterns']['timePatterns'], 2)):
+            if model['missingPatterns']['timePatterns'][i, j] == 0:
                 # The data does not cover this pattern
                 continue
-            pattern = model['missingPatterns']['dataPatterns'][j][model['missingPatterns']['timePatterns'][i,j]]
-            if j==1:
+            pattern = model['missingPatterns']['dataPatterns'][j][model['missingPatterns']['timePatterns'][i, j]]
+            if j == 1:
                 # For instrumental data, pattern contains the indices of the
                 # locations that have data for timePattern
-                C[pattern] = C[pattern] + 1/params['tau2_I']
+                C[pattern] = C[pattern] + 1 / params['tau2_I']
             else:
-                C[pattern['locationIndices']] = C[pattern['locationIndices']] + sum(pattern['locationMap'],1)*params['Beta_1'][j-1]**2/params['tau2_P'][j-1]
+                C[pattern['locationIndices']] = C[pattern['locationIndices']] + sum(pattern['locationMap'], 1) * \
+                                                params['Beta_1'][j - 1] ** 2 / params['tau2_P'][j - 1]
 
-        C = model['invSpatialCorrMatrix']*(1+params['alpha']**2)/params['sigma2'] + np.diag(C)
+        C = model['invSpatialCorrMatrix'] * (1 + params['alpha'] ** 2) / params['sigma2'] + np.diag(C)
 
         sqrtCovMtxs[i] = np.linalg.cholesky(C)
         covMtxs[i] = C
