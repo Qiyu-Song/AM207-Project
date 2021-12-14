@@ -302,7 +302,8 @@ def sampleProxyAddition(data, params, priors, currentField, proxyId):
     return beta0
 
 
-def calcSpatialCovariancescalcSpatialCovariances(data, model, params):
+'''
+def calcSpatialCovariances(data, model, params):
     # Calculates the temporal covariance matries
     # Done for each pattern of missing data
     covMtxs = [None] * np.size(model['missingPatterns']['timePatterns'], 1)
@@ -328,3 +329,4 @@ def calcSpatialCovariancescalcSpatialCovariances(data, model, params):
         sqrtCovMtxs[i] = np.linalg.cholesky(C)
         covMtxs[i] = C
     return covMtxs, sqrtCovMtxs
+'''

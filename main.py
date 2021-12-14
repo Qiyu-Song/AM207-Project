@@ -5,6 +5,8 @@ import copy
 from lib.earthDistances import earthDistances
 from lib.defaults import defaults
 from lib.initialValues import initialValues
+from lib.calcSpatialCovariance import calcSpatialCovariances
+from lib.samplerFunctions import *
 
 INSTRU = 0  # so that data[INSTRU] = instrumental
 
@@ -68,7 +70,7 @@ class BARCAST:
 
             # Calculate temporal covariance matrices for each missing pattern
             if self.options['useSpatialCache']:
-                self.model['spatialCovMatrices'], self.model['sqrtSpatialCovMatrices'] = calcSpatialCovariance(
+                self.model['spatialCovMatrices'], self.model['sqrtSpatialCovMatrices'] = calcSpatialCovariances(
                     self.data, self.model, self.currentParams)  # need implementation
 
         self.params[0] = copy.deepcopy(self.currentParams)
