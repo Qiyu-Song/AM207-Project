@@ -143,5 +143,3 @@ def defaults(opt, data=None):
     setDefault(opt, ['sampleCompleteField'], False)
 
     return
-
-test()
