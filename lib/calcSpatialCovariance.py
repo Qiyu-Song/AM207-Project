@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 
 INSTRU = 0  # so that data[INSTRU] = instrumental
 
@@ -7,7 +8,7 @@ def calcSpatialCovariances(data, model, params):
     # Calculates the temporal covariance matries
     # Done for each pattern of missing data
     covMtxs = [None] * np.size(model['missingPatterns']['timePatterns'], 0)
-    sqrtCovMtxs = covMtxs.copy()
+    sqrtCovMtxs = copy.deepcopy(covMtxs)
     n = np.size(data[INSTRU].locations, 0)
     for i in range(np.size(model['missingPatterns']['timePatterns'], 0)):
         C = np.zeros((n, 1))
