@@ -78,12 +78,12 @@ def initialValues(data, model, options):
         currentParams['tau2_P'] = vals
 
         # Initial value for Beta_1: mode of the normal prior:
-        currentParams['Beta_1'] = options['priors']['Beta_1'][:, 0] + np.random.rand(
-            np.size(options['priors']['Beta_1'], 0), 1) * np.sqrt(options['priors']['Beta_1'][:, 1:])
+        currentParams['Beta_1'] = options['priors']['Beta_1'][0] + np.random.rand(
+            np.size(options['priors']['Beta_1'], 1), 1) * np.sqrt(options['priors']['Beta_1'][1])
 
         # Initial value for Beta_0: mode of normal prior:
-        currentParams['Beta_0'] = options['priors']['Beta_0'][:, 0] + np.random.rand(
-            np.size(options['priors']['Beta_0'], 0), 1) * np.sqrt(options['priors']['Beta_0'][:, 1:])
+        currentParams['Beta_0'] = options['priors']['Beta_0'][0] + np.random.rand(
+            np.size(options['priors']['Beta_0'], 1), 1) * np.sqrt(options['priors']['Beta_0'][1])
 
     # Setting the initial values of the temperature matrix.
     if options['useModes']:

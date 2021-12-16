@@ -81,23 +81,23 @@ def defaults(opt, data=None):
     # the scaling should be (1-tau_P^2)(1-alpha^2)/sigma^2)^(+1/2). So set the mean to the modes of these priors,
     # and then include a decent sized variance.
     if data is not None:
-        setDefault(opt, ['priors', 'Beta_1'], [np.reshape(((1 - opt['priors']['tau2_P'][:, 1] / (
+        setDefault(opt, ['priors', 'Beta_1'], np.array([np.reshape(((1 - opt['priors']['tau2_P'][:, 1] / (
                 opt['priors']['tau2_P'][:, 0] + 1)) * (1 - np.mean(opt['priors']['alpha']) ** 2) / (
                                                                   opt['priors']['sigma2'][1] / (
                                                                   opt['priors']['sigma2'][0] + 1))) ** (1 / 2),
                                                          (-1, 1)),
-                                              np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2])
+                                              np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2]))
     else:
-        setDefault(opt, ['priors', 'Beta_1'], [1, 8 ** 2])
+        setDefault(opt, ['priors', 'Beta_1'], np.array([1, 8 ** 2]))
 
     # Prior distribution parameters for the shift of proxy observations.
     # Defines the mean and variance of normal distribution. Should be equal to the prior of mu.
     # Prior for Beta_0. SET EQUAL TO THE PRIOR FOR MU
     if data is not None:
-        setDefault(opt, ['priors', 'Beta_0'], [-opt['priors']['Beta_1'][:][0] * opt['priors']['mu'][0],
-                                              np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2])
+        setDefault(opt, ['priors', 'Beta_0'], np.array([-opt['priors']['Beta_1'][:][0] * opt['priors']['mu'][0],
+                                              np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2]))
     else:
-        setDefault(opt, ['priors', 'Beta_0'], [opt['priors']['mu'][0], 8 ** 2])
+        setDefault(opt, ['priors', 'Beta_0'], np.array([opt['priors']['mu'][0], 8 ** 2]))
 
     # Prior distribution parameters for the temperature field.
     # Defines the mean and variance of normal distribution.

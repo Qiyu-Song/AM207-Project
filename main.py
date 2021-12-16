@@ -17,11 +17,22 @@ class DATA:
             print(len(data_loc), len(data_time), len(data_value))
             raise RuntimeError("Wrong initialization for data!")
         self.type = data_type  # 'instrumental' or 'some proxy'
-        self.locations = data_loc  # N*(lat, lon)
+
+        self.locations = [data_loc[0]]  # least (lat, lon)
+        self.loc_ind = []  # N size 1d integer
+        for loc_ in data_loc:
+            if np.max(np.sum(np.array(loc_) == np.array(self.locations), axis=1)) == np.size(loc_):
+                ind_ = np.argmax(np.sum(loc_ == self.locations, axis=1))
+                self.loc_ind.append(ind_)
+            else:
+                self.locations.append(loc_)
+                self.loc_ind.append(len(self.locations)-1)
+        self.locations = np.array(self.locations)
+
         self.time = data_time  # N size 1d array in years AD
-        self.value = data_value  # temperature
-        self.loc_ind = None
         self.time_ind = None
+
+        self.value = data_value  # temperature
 
 
 
@@ -44,8 +55,8 @@ class BARCAST:
         # Find which locations in proxies correspond to instrumental locations
         for prx in self.data[INSTRU + 1:]:
             loc_ind = np.argmin(earthDistances(self.data[INSTRU].locations, prx.locations), axis=0)
-            prx.loc_ind = loc_ind
-        self.data[INSTRU].loc_ind = np.arange(len(self.data[INSTRU].type))
+            prx.loc_ind = [data[INSTRU].loc_ind[ind_] for ind_ in loc_ind]
+            prx.locations = data[INSTRU].locations
 
         # Add a single point to the timeline according to BARCAST. Assumes times are in years AD
         timeline = np.array([])  # from data, an 1d array
@@ -70,6 +81,7 @@ class BARCAST:
 
         # Calculate spatial covariance
         self.model['spatialCorrMatrix'] = np.exp(-self.currentParams['phi'] * self.model['distances'])
+
         self.model['invSpatialCorrMatrix'] = np.linalg.inv(self.model['spatialCorrMatrix'])
 
         if not self.options['sampleCompleteField']:
