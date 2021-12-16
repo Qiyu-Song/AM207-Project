@@ -16,7 +16,7 @@ class DATA:
         self.type = data_type  # 'instrumental' or 'some proxy'
         self.locations = data_loc  # N*(lat, lon)
         self.time = data_time  # N size 1d array in years AD
-        self.value = data_value
+        self.value = data_value  # temperature
         self.loc_ind = None
         self.time_ind = None
 
@@ -151,3 +151,34 @@ if __name__ == '__main__':
     # proxy2 = DATA('proxy2', loc, time, value)
     # could have more ...
     # data = [instrumental, proxy1, proxy2, ...]
+
+def get_test_data():
+    # instrumental data, 15 lines
+    lon = np.arange(15).reshape(-1, 1)*72 % 360
+    lat = np.zeros((15, 1))
+    loc = np.hstack((lat, lon))
+    time = np.array([101, 102, 103] * 5).reshape(5, 3).transpose().reshape(-1, 1)
+    value = np.random.rand(15, 1) * 0.1 + 14
+    data_instru = DATA('instrumental', loc, time, value)
+
+    # proxy data 1, 10 lines
+    lon = np.arange(10).reshape(-1, 1)*180 % 360
+    lat = np.zeros((10, 1))
+    loc = np.hstack((lat, lon))
+    time = np.array([100, 101, 102, 103, 104] * 2).reshape(2, 5).transpose().reshape(-1, 1)
+    value = np.exp((np.random.rand(10, 1) * 0.1 + 14)/14) + 0.2
+    data_proxy1 = DATA('proxy1', loc, time, value)
+
+    # proxy data 2, 12 lines
+    lon = np.arange(12).reshape(-1, 1)*120 % 360
+    lat = np.zeros((12, 1))
+    loc = np.hstack((lat, lon))
+    time = np.array([99, 100, 101, 102] * 3).reshape(3, 4).transpose().reshape(-1, 1)
+    value = np.log((np.random.rand(10, 1) * 0.1 + 14)) + 0.2
+    data_proxy2 = DATA('proxy2', loc, time, value)
+
+    return np.array([data_instru,data_proxy1,data_proxy2])
+
+
+data = get_test_data()
+barcast = BARCAST(data)
