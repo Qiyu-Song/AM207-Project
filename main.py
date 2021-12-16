@@ -13,12 +13,16 @@ INSTRU = 0  # so that data[INSTRU] = instrumental
 
 class DATA:
     def __init__(self, data_type, data_loc, data_time, data_value):
+        if len({len(data_loc), len(data_time), len(data_value)}) > 1: # length of each should be equal
+            print(len(data_loc), len(data_time), len(data_value))
+            raise RuntimeError("Wrong initialization for data!")
         self.type = data_type  # 'instrumental' or 'some proxy'
         self.locations = data_loc  # N*(lat, lon)
         self.time = data_time  # N size 1d array in years AD
         self.value = data_value  # temperature
         self.loc_ind = None
         self.time_ind = None
+
 
 
 class BARCAST:
@@ -41,17 +45,22 @@ class BARCAST:
         for prx in self.data[INSTRU + 1:]:
             loc_ind = np.argmin(earthDistances(self.data[INSTRU].locations, prx.locations), axis=0)
             prx.loc_ind = loc_ind
-        self.data[INSTRU].loc_ind = np.arange(self.data[INSTRU].shape[0])
+        self.data[INSTRU].loc_ind = np.arange(len(self.data[INSTRU].type))
 
         # Add a single point to the timeline according to BARCAST. Assumes times are in years AD
-        timeline = ...  # from data, an 1d array
-        self.model['timeline'] = np.sort(timeline.append(timeline, np.min(timeline) - 1))
+        timeline = np.array([])  # from data, an 1d array
+        for ist_prx in self.data:
+            timeline = np.hstack((timeline,ist_prx.time.reshape(-1)))
+        timeline = list(set(timeline))
+        timeline.append(np.min(timeline) - 1)
+
+        self.model['timeline'] = np.sort(timeline)
 
         # Find which times in proxies correspond to timeline points
         for prx in self.data[INSTRU + 1:]:
-            time_ind = np.nonzero(prx.time_ind[:, None] == self.model['timeline'])[1]
+            time_ind = [timeline.index(time_point) for time_point in prx.time]
             prx.time_ind = time_ind
-        self.data[INSTRU].time_ind = np.nonzero(self.data[INSTRU].time_ind[:, None] == self.model['timeline'])[1]
+        self.data[INSTRU].time_ind = [timeline.index(time_point) for time_point in data[INSTRU].time]
 
         # Find distance matrix
         self.model['distances'] = earthDistances(self.data[INSTRU].locations)
@@ -174,7 +183,7 @@ def get_test_data():
     lat = np.zeros((12, 1))
     loc = np.hstack((lat, lon))
     time = np.array([99, 100, 101, 102] * 3).reshape(3, 4).transpose().reshape(-1, 1)
-    value = np.log((np.random.rand(10, 1) * 0.1 + 14)) + 0.2
+    value = np.log((np.random.rand(12, 1) * 0.1 + 14)) + 0.2
     data_proxy2 = DATA('proxy2', loc, time, value)
 
     return np.array([data_instru,data_proxy1,data_proxy2])
@@ -182,3 +191,4 @@ def get_test_data():
 
 data = get_test_data()
 barcast = BARCAST(data)
+barcast.initialize()

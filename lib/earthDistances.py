@@ -15,7 +15,7 @@ def earthDistances(rowloc=None, colloc=None):
     """
     radius = 6378.137  # Radius of Earth in km
 
-    if not colloc:
+    if colloc is None:
         colloc = rowloc.copy()
 
     rowloc = rowloc * np.pi / 180.
