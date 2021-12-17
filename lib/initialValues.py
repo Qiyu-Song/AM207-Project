@@ -66,24 +66,25 @@ def initialValues(data, model, options):
                 currentParams['tau2_I'] = t
                 break
 
-        # Initial Value for tau2_P: : draw from inverse gamma prior truncated to less than some cut off value:
-        pars = options['priors']['tau2_P'][:]
-        vals = np.zeros((np.size(pars, 0), 1))
-        for i in range(np.size(pars, 0)):
-            while True:
-                t = 1 / np.random.gamma(pars[i, 0], 1 / pars[i, 1])
-                if t < 10:
-                    vals[i] = t
-                    break
-        currentParams['tau2_P'] = vals
+        if len(data)>1:
+            # Initial Value for tau2_P: : draw from inverse gamma prior truncated to less than some cut off value:
+            pars = options['priors']['tau2_P'][:]
+            vals = np.zeros((np.size(pars, 0), 1))
+            for i in range(np.size(pars, 0)):
+                while True:
+                    t = 1 / np.random.gamma(pars[i, 0], 1 / pars[i, 1])
+                    if t < 10:
+                        vals[i] = t
+                        break
+            currentParams['tau2_P'] = vals
 
-        # Initial value for Beta_1: mode of the normal prior:
-        currentParams['Beta_1'] = options['priors']['Beta_1'][0] + np.random.rand(
-            np.size(options['priors']['Beta_1'], 1), 1) * np.sqrt(options['priors']['Beta_1'][1])
+            # Initial value for Beta_1: mode of the normal prior:
+            currentParams['Beta_1'] = options['priors']['Beta_1'][0] + np.random.rand(
+                np.size(options['priors']['Beta_1'], 1), 1) * np.sqrt(options['priors']['Beta_1'][1])
 
-        # Initial value for Beta_0: mode of normal prior:
-        currentParams['Beta_0'] = options['priors']['Beta_0'][0] + np.random.rand(
-            np.size(options['priors']['Beta_0'], 1), 1) * np.sqrt(options['priors']['Beta_0'][1])
+            # Initial value for Beta_0: mode of normal prior:
+            currentParams['Beta_0'] = options['priors']['Beta_0'][0] + np.random.rand(
+                np.size(options['priors']['Beta_0'], 1), 1) * np.sqrt(options['priors']['Beta_0'][1])
 
     # Setting the initial values of the temperature matrix.
     if options['useModes']:

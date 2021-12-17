@@ -133,34 +133,35 @@ def sampleTempField(data, model, params, priors):
                         (inds, np.zeros((np.size(inds))))), shape=(np.size(m, 0), 1),dtype=np.float)
 
     # Add instrumental data
-    inds = np.tile(np.array(data[INSTRU].loc_ind).transpose().reshape(-1, 1), (1, len(data[INSTRU].time_ind))) + np.tile(
-        np.array(data[INSTRU].time_ind).transpose().reshape(-1, 1).transpose() - 1,
+    inds = np.tile((np.array(data[INSTRU].loc_ind)+1).transpose().reshape(-1, 1), (1, len(data[INSTRU].time_ind))) + np.tile(
+        (np.array(data[INSTRU].time_ind)+1).transpose().reshape(-1, 1).transpose() -1,
         (len(data[INSTRU].loc_ind), 1)) * nrLoc
 
     inds = inds[:,0]
-    S = S + csr_matrix((np.ones(np.size(inds)) / params['tau2_I'], (inds, inds)), shape=(np.size(S, 0), np.size(S, 1)),
+
+    S = S + csr_matrix((np.ones(np.size(inds)) / params['tau2_I'], (inds-1, inds-1)), shape=(np.size(S, 0), np.size(S, 1)),
                        dtype=np.float)
     m = m + csr_matrix((data[INSTRU].value.reshape(-1,),
-                        (inds, np.zeros(np.size(inds)))), shape=(np.size(m, 0), 1), dtype=np.float)
+                        (inds-1, np.zeros(np.size(inds)))), shape=(np.size(m, 0), 1), dtype=np.float)
 
     # Add proxy data
     for i in range(len(data)-1):
-        inds = np.tile(np.array(data[INSTRU+i].loc_ind).transpose().reshape(-1, 1),
+        inds = np.tile((np.array(data[INSTRU+i].loc_ind)+1).transpose().reshape(-1, 1),
                        (1, len(data[INSTRU+i].time_ind))) + np.tile(
-            np.array(data[INSTRU+i].time_ind).transpose().reshape(-1, 1).transpose() - 1,
+            (np.array(data[INSTRU+i].time_ind)+1).transpose().reshape(-1, 1).transpose() - 1,
             (len(data[INSTRU+i].loc_ind), 1)) * nrLoc
 
         inds = inds[:, 0]
-        S = S + csr_matrix((np.ones(np.size(inds))*params['Beta_1'][i]**2 / params['tau2_P'][i], (inds, inds)),
+        S = S + csr_matrix((np.ones(np.size(inds))*params['Beta_1'][i]**2 / params['tau2_P'][i], (inds-1, inds-1)),
                            shape=(np.size(S, 0), np.size(S, 1)),
                            dtype=np.float)
         m = m + csr_matrix(((data[INSTRU+i].value.reshape(-1,)-params['Beta_0'][i])*params['Beta_1'][i]/params['tau2_P'][i],
-                            (inds, np.zeros(np.size(inds)))), shape=(np.size(m, 0), 1), dtype=np.float)
+                            (inds-1, np.zeros(np.size(inds)))), shape=(np.size(m, 0), 1), dtype=np.float)
 
     # Sample field
     field = np.linalg.lstsq(S.todense(), m)[0] + np.linalg.lstsq(np.linalg.cholesky(S.todense()), np.random.randn(np.size(m)))[0].reshape(-1,1)
     field = field.reshape(nrTime,nrLoc).transpose()
-
+    print(field)
     return field
 
 

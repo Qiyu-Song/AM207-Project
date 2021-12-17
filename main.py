@@ -56,22 +56,21 @@ class BARCAST:
         for prx in self.data[INSTRU + 1:]:
             loc_ind = np.argmin(earthDistances(self.data[INSTRU].locations, prx.locations), axis=0)
             prx.loc_ind = [loc_ind[ind_] for ind_ in prx.loc_ind]
-            prx.locations = data[INSTRU].locations
+            prx.locations = self.data[INSTRU].locations
 
         # Add a single point to the timeline according to BARCAST. Assumes times are in years AD
-        timeline = np.array([])  # from data, an 1d array
+        timeline = np.array(self.data[INSTRU].time.reshape(-1))  # from data, an 1d array
         for ist_prx in self.data:
             timeline = np.hstack((timeline,ist_prx.time.reshape(-1)))
         timeline = list(set(timeline))
         timeline.append(np.min(timeline) - 1)
-
-        self.model['timeline'] = np.sort(timeline)
+        self.model['timeline'] = list(np.sort(timeline))
 
         # Find which times in proxies correspond to timeline points
         for prx in self.data[INSTRU + 1:]:
-            time_ind = [timeline.index(time_point) for time_point in prx.time]
+            time_ind = [self.model['timeline'].index(time_point) for time_point in prx.time]
             prx.time_ind = time_ind
-        self.data[INSTRU].time_ind = [timeline.index(time_point) for time_point in data[INSTRU].time]
+        self.data[INSTRU].time_ind = [self.model['timeline'].index(time_point) for time_point in self.data[INSTRU].time]
 
         # Find distance matrix
         self.model['distances'] = earthDistances(self.data[INSTRU].locations)
@@ -179,7 +178,7 @@ def get_test_data():
     lat = np.zeros((15, 1))
     loc = np.hstack((lat, lon))
     time = np.array([101, 102, 103] * 5).reshape(5, 3).transpose().reshape(-1, 1)
-    value = np.random.rand(15, 1) * 0.1 + 14
+    value = np.random.rand(15, 1) * 0.1 + 14 + (time -100)*1
     data_instru = DATA('instrumental', loc, time, value)
 
     # proxy data 1, 10 lines
@@ -198,7 +197,7 @@ def get_test_data():
     value = np.log((np.random.rand(12, 1) * 0.1 + 14)) + 0.2
     data_proxy2 = DATA('proxy2', loc, time, value)
 
-    return np.array([data_instru,data_proxy1,data_proxy2])
+    return np.array([data_instru])
 
 
 data = get_test_data()

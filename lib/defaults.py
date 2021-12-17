@@ -80,7 +80,7 @@ def defaults(opt, data=None):
     # This one is normal as well. IF THE PROXIES HAVE BEEN PRE-PROCSSES TO HAVE MEAN=0, STD=1, THEN Hypothetically,
     # the scaling should be (1-tau_P^2)(1-alpha^2)/sigma^2)^(+1/2). So set the mean to the modes of these priors,
     # and then include a decent sized variance.
-    if data is not None:
+    if len(data)>1:
         setDefault(opt, ['priors', 'Beta_1'], np.array([np.reshape(((1 - opt['priors']['tau2_P'][:, 1] / (
                 opt['priors']['tau2_P'][:, 0] + 1)) * (1 - np.mean(opt['priors']['alpha']) ** 2) / (
                                                                   opt['priors']['sigma2'][1] / (
@@ -93,7 +93,7 @@ def defaults(opt, data=None):
     # Prior distribution parameters for the shift of proxy observations.
     # Defines the mean and variance of normal distribution. Should be equal to the prior of mu.
     # Prior for Beta_0. SET EQUAL TO THE PRIOR FOR MU
-    if data is not None:
+    if len(data)>1:
         setDefault(opt, ['priors', 'Beta_0'], np.array([-opt['priors']['Beta_1'][:][0] * opt['priors']['mu'][0],
                                               np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2]))
     else:
