@@ -121,6 +121,7 @@ def sampleTempField(data, model, params, priors):
     AC = spdiags(np.vstack((params['alpha'] ** 2, np.ones((nrTime - 2, 1)) * (1 + params['alpha'] ** 2), 1)).reshape(-1,), 0, nrTime,
                  nrTime) + spdiags(np.ones((2, nrTime)) * (-1 * params['alpha']), [1, -1], nrTime, nrTime)
     S = kron(AC, model['invSpatialCorrMatrix'] / params['sigma2'])
+
     m = (np.sum(model['invSpatialCorrMatrix'], 1).reshape(-1,1) / params['sigma2']) * np.hstack((params['alpha'] * (
             1 - params['alpha']), (1 - params['alpha']) ** 2 * np.ones((nrTime - 2)), (1 - params['alpha']))) * \
         params['mu']
@@ -159,9 +160,9 @@ def sampleTempField(data, model, params, priors):
                             (inds-1, np.zeros(np.size(inds)))), shape=(np.size(m, 0), 1), dtype=np.float)
 
     # Sample field
-    field = np.linalg.lstsq(S.todense(), m)[0] + np.linalg.lstsq(np.linalg.cholesky(S.todense()), np.random.randn(np.size(m)))[0].reshape(-1,1)
+    field = np.linalg.lstsq(S.todense(), m,rcond=None)[0] + np.linalg.lstsq(np.linalg.cholesky(S.todense()), np.random.randn(np.size(m)),rcond=None)[0].reshape(-1,1)
     field = field.reshape(nrTime,nrLoc).transpose()
-    print(field)
+
     return field
 
 
@@ -169,15 +170,16 @@ def sampleAutocorrCoeff(model, params, priors, currentField):
     # Sample autocorrelation coefficient
     currentField = currentField - params['mu']
     field = currentField[:, :-1].transpose().dot(model['invSpatialCorrMatrix']) / params['sigma2']
-    postVar = 1 / sum(sum(field.dot(currentField[:, :-1].transpose())))
-    postMean = postVar * sum(sum(field.dot(currentField[:, 1:].transpose())))
+
+    postVar = 1 / sum(sum(np.array(field)*np.array(currentField[:, :-1].transpose())))
+    postMean = postVar * sum(sum(np.array(field)*np.array(currentField[:, 1:].transpose())))
     postStd = np.sqrt(postVar)
 
     prob = norm.cdf(priors['alpha'], postMean, postStd)
     if prob[1] - prob[0] < 1e-9:
         alpha = np.random.rand() * (priors['alpha'][1] - priors['alpha'][0]) + priors['alpha'][0]
     else:
-        alpha = norm.ppfv((prob[1] - prob[0]) * np.random.rand() + prob[0], postMean, postStd)
+        alpha = norm.ppf((prob[1] - prob[0]) * np.random.rand() + prob[0], postMean, postStd)
     return alpha
 
 
@@ -186,13 +188,14 @@ def sampleAutocorrMean(model, params, priors, currentField):
     postVar = (np.size(currentField, 1) - 1) * sum(sum(model['invSpatialCorrMatrix'])) / params['sigma2']
     postVar = 1 / (1 / priors['mu'][1] + (1 - params['alpha']) ** 2 * postVar)
 
-    postMean = sum(currentField[:, 1:] - params['alpha'] * currentField[:, :-1], 1)
+    postMean = np.sum(currentField[:, 1:] - params['alpha'] * currentField[:, :-1], 1)
+
     postMean = postVar * (
-                (1 - params['alpha']) * sum(model['invSpatialCorrMatrix'] * postMean) / params['sigma2'] + priors['mu'][
-            0] / priors['mu'][1])
+                (1 - params['alpha']) * sum(model['invSpatialCorrMatrix'] * postMean) / params['sigma2'] +
+                priors['mu'][0] / priors['mu'][1])
 
     mu = postMean + np.sqrt(postVar) * np.random.rand()
-    return mu
+    return np.sum(mu)
 
 
 def sampleSpatialVariance(model, params, priors, currentField):
@@ -200,7 +203,8 @@ def sampleSpatialVariance(model, params, priors, currentField):
     postAlpha = (np.size(currentField) - np.size(currentField, 0)) / 2 + priors['sigma2'][0]
 
     tDiff = currentField[:, 1:] - params['alpha'] * currentField[:, :-1] - (1 - params['alpha']) * params['mu']
-    postBeta = priors['sigma2'][1] + sum(sum((model['invSpatialCorrMatrix'] * tDiff).dot(tDiff))) / 2
+
+    postBeta = priors['sigma2'][1] + sum(sum((np.array(model['invSpatialCorrMatrix'].dot(tDiff))*np.array(tDiff)))) / 2
 
     sigma2 = min(50, 1 / np.random.gamma(postAlpha, 1 / postBeta))
     return sigma2
@@ -213,8 +217,9 @@ def sampleSpatialCovarianceRange(model, params, priors, mhparams, currentField):
 
     spatCorr = model['spatialCorrMatrix']
     logphi = np.log(params['phi'])
+
     value = -1 / (2 * priors['phi'][1]) * (logphi - priors['phi'][0]) ** 2 - 1 / (2 * params['sigma2']) * sum(
-        sum(tDiff.dot(np.linalg.lstsq(spatCorr, tDiff))))
+        sum(np.array(tDiff)*np.array(np.linalg.lstsq(spatCorr, tDiff,rcond=None)[0])))
 
     propVar = np.sqrt(mhparams['log_phi'][0])
     n = (np.size(currentField, 1) - 1) / 2
@@ -223,12 +228,12 @@ def sampleSpatialCovarianceRange(model, params, priors, mhparams, currentField):
         logphiProp = logphi + propVar * np.random.randn()
         spatCorrProp = np.exp(-np.exp(logphiProp) * model['distances'])
 
-        valueProp = -1 / (2 * priors['phi'][1]) * (logphiProp - priors['phi'][0]) ** 2 - 1 / (2 * params.sigma2) * sum(
-            sum(tDiff.dot(np.linalg.lstsq(spatCorrProp, tDiff))))
+        valueProp = -1 / (2 * priors['phi'][1]) * (logphiProp - priors['phi'][0]) ** 2 - 1 / (2 * params['sigma2'] * sum(
+            sum(np.array(tDiff)*np.array(np.linalg.lstsq(spatCorrProp, tDiff,rcond=None)[0]))))
 
-        logRatio = valueProp - value + n * np.log(np.linalg.det(np.linalg.lstsq(spatCorrProp, tDiff)))
+        logRatio = valueProp - value + n * np.log(np.linalg.det(np.linalg.lstsq(spatCorrProp, spatCorr,rcond=None)[0]))
 
-        if np.exp(logRatio) > np.random.rand():
+        if logRatio > np.log(np.random.rand()):
             # Accept proposition
             logphi = logphiProp
             spatCorr = spatCorrProp
@@ -241,7 +246,7 @@ def sampleSpatialCovarianceRange(model, params, priors, mhparams, currentField):
 
 def sampleInstrumentalErrorVar(data, priors, currentField):
     # Sample instrumental measurement error variance
-    res = data[INSTRU].value - currentField(data[INSTRU].loc_ind, data[INSTRU].time_ind)
+    res = data[INSTRU].value - currentField[data[INSTRU].loc_ind, data[INSTRU].time_ind].transpose()
     res = res[~np.isnan(res)]
     res = res.reshape(-1, 1)
     postBeta = res.transpose().dot(res) / 2 + priors['tau2_I'][1]
@@ -255,10 +260,12 @@ def sampleInstrumentalErrorVar(data, priors, currentField):
 
 def sampleProxyErrorVar(data, params, priors, currentField, proxyId):
     # Sample instrumental measurement error variance
-    res = params['Beta_1'][proxyId] * currentField(data[proxyId + 1].loc_ind, data[proxyId + 1].time_ind)
+    res = params['Beta_1'][proxyId] * np.array(
+        currentField[data[proxyId + 1].loc_ind, :][:, data[proxyId + 1].time_ind])
     res = data[proxyId + 1].value - (res + params['Beta_0'][proxyId])
     res = res[~np.isnan(res)]
-    res = res.reshape(-1, 1)
+    res = res.transpose().reshape(-1, 1)
+
     postBeta = res.transpose().dot(res) / 2 + priors['tau2_P'][proxyId, 1]
     # As currentField is completely filled with numbers, the size of res
     # equals the number of non-NaN's in instrumental data
@@ -270,16 +277,14 @@ def sampleProxyErrorVar(data, params, priors, currentField, proxyId):
 
 def sampleProxyMultiplier(data, params, priors, currentField, proxyId):
     # Sample proxy measurement multiplier
-    field = currentField(data[proxyId + 1].loc_ind, data[proxyId + 1].time_ind)
-    mask = ~np.isnan(data[proxyId + 1].value)
-    field = field[mask]
-    field = field.reshape(-1, 1)
-    data = data[proxyId + 1].value[mask]
-    data = data.reshape(-1, 1)
+    field = currentField[data[proxyId + 1].loc_ind,data[proxyId + 1].time_ind].transpose()
 
-    postVar = 1 / (1 / priors['Beta_1'][proxyId, 1] + field.transpose().dot(field) / params['tau2_P'][proxyId])
-    postMean = postVar * (priors['Beta_1'][proxyId, 0] / priors['Beta_1'][proxyId, 1] + (
-                data - params['Beta_0'][proxyId]).transpose().dot(field) / params['tau2_P'][proxyId])
+    data_ = data[proxyId + 1].value
+    data_ = data_.reshape(-1, 1)
+
+    postVar = 1 / (1 / priors['Beta_1'][1, proxyId] + field.transpose().dot(field) / params['tau2_P'][proxyId])
+    postMean = postVar.dot(priors['Beta_1'][0, proxyId] / priors['Beta_1'][1, proxyId] + (
+            data_ - params['Beta_0'][proxyId]).transpose().dot(field) / params['tau2_P'][proxyId])
 
     beta1 = postMean + np.sqrt(postVar) * np.random.randn()
     return beta1
@@ -287,13 +292,13 @@ def sampleProxyMultiplier(data, params, priors, currentField, proxyId):
 
 def sampleProxyAddition(data, params, priors, currentField, proxyId):
     # Sample proxy measurement addition parameter
-    res = data[proxyId + 1].value - params['Beta_1'][proxyId] * currentField(data[proxyId + 1].loc_ind,
-                                                                             data[proxyId + 1].time_ind)
-    res = res[~np.isnan(res)]
+    res = data[proxyId + 1].value.reshape(1,-1) - params['Beta_1'][proxyId] * currentField[data[proxyId + 1].loc_ind,
+                                                                             data[proxyId + 1].time_ind]
+    res = res.transpose()
 
-    postVar = 1 / (1 / priors['Beta_0'][proxyId, 1] + np.size(res) / params['tau2_P'][proxyId])
+    postVar = 1 / (1 / priors['Beta_0'][1, proxyId] + np.size(res) / params['tau2_P'][proxyId])
     postMean = postVar * (
-                priors['Beta_0'][proxyId, 0] / priors['Beta_0'][proxyId, 1] + sum(res) / params['tau2_P'][proxyId])
+                priors['Beta_0'][0,proxyId] / priors['Beta_0'][1, proxyId] + np.sum(res) / params['tau2_P'][proxyId])
 
     beta0 = postMean + np.sqrt(postVar) * np.random.randn()
     return beta0

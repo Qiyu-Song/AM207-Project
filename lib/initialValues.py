@@ -93,7 +93,7 @@ def initialValues(data, model, options):
                                                              np.size(model['timeline']))
     else:
         # Method 2: Draw each T(k) from the prior for T(0):
-        currentField = options['priors']['T_0'][0] + np.sqrt(options['priors']['T_0'][1]) * np.random.normal(
-            np.size(data[INSTRU].locations, 1), np.size(model['timeline']))
+        currentField = options['priors']['T_0'][0] + np.sqrt(options['priors']['T_0'][1]) * np.random.randn(
+            np.size(data[INSTRU].locations, 0), np.size(model['timeline']))
 
     return currentParams, currentField

@@ -94,7 +94,8 @@ class BARCAST:
                     self.data, self.model, self.currentParams)  # need implementation
 
         self.params[0] = copy.deepcopy(self.currentParams)
-        self.fields = np.zeros((np.size(self.currentField), self.options['samplerIterations']))
+
+        self.fields = np.zeros((self.options['samplerIterations'],self.currentField.shape[0],self.currentField.shape[1]))
 
     def sampler(self):
         # Sample MCMC chain
@@ -158,9 +159,11 @@ class BARCAST:
                     self.model['spatialCovMatrices'], self.model['sqrtSpatialCovMatrices'] = calcSpatialCovariances(
                         self.data, self.model, self.currentParams)
 
-            self.params[sample] = copy.deepcopy(self.currentParams)
-            if sample > self.options['preSamplerIteration']:
-                self.fields[:, :, sample - self.options['preSamplerIteration']] = copy.deepcopy(self.currentField)
+            if sample > self.options['preSamplerIterations']:
+                self.params[sample - self.options['preSamplerIterations']] = copy.deepcopy(self.currentParams)
+                self.fields[sample - self.options['preSamplerIterations']] = copy.deepcopy(self.currentField)
+
+        print('Sampling finished!')
 
 
 if __name__ == '__main__':
@@ -197,7 +200,7 @@ def get_test_data():
     value = np.log((np.random.rand(12, 1) * 0.1 + 14)) + 0.2
     data_proxy2 = DATA('proxy2', loc, time, value)
 
-    return np.array([data_instru])
+    return np.array([data_instru,data_proxy1 ,data_proxy2])
 
 
 data = get_test_data()
