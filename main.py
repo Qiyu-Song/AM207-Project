@@ -102,6 +102,7 @@ class BARCAST:
         totalIterations = self.options['preSamplerIterations'] + self.options['samplerIterations']
         for sample in range(totalIterations):
             # Sample temperature field
+
             if not self.options['sampleCompleteField']:
                 # Original Gibb's sampler from Tingley et al. slightly optimized.
                 self.currentField[:, 0] = sampleTemp0(self.model, self.currentParams, self.options['priors'],
@@ -159,7 +160,10 @@ class BARCAST:
                     self.model['spatialCovMatrices'], self.model['sqrtSpatialCovMatrices'] = calcSpatialCovariances(
                         self.data, self.model, self.currentParams)
 
+
             if sample > self.options['preSamplerIterations']:
+                if (sample-1) % 100 ==0:
+                    print('------------Samples:',sample-1 - self.options['preSamplerIterations'],'/',self.options['samplerIterations'])
                 self.params[sample - self.options['preSamplerIterations']] = copy.deepcopy(self.currentParams)
                 self.fields[sample - self.options['preSamplerIterations']] = copy.deepcopy(self.currentField)
 
@@ -181,8 +185,8 @@ def get_test_data():
     lat = np.zeros((15, 1))
     loc = np.hstack((lat, lon))
     time = np.array([101, 102, 103] * 5).reshape(5, 3).transpose().reshape(-1, 1)
-    value = np.random.rand(15, 1) * 0.1 + 14 + (time -100)*1
-    data_instru = DATA('instrumental', loc, time, value)
+    ins_value = np.random.rand(15, 1) * 0.1 + 14
+    data_instru = DATA('instrumental', loc, time, ins_value)
 
     # proxy data 1, 10 lines
     lon = np.arange(10).reshape(-1, 1)*180 % 360
@@ -190,7 +194,7 @@ def get_test_data():
     loc = np.hstack((lat, lon))
     time = np.array([100, 101, 102, 103, 104] * 2).reshape(2, 5).transpose().reshape(-1, 1)
     value = np.exp((np.random.rand(10, 1) * 0.1 + 14)/14) + 0.2
-    data_proxy1 = DATA('proxy1', loc, time, value)
+    data_proxy1 = DATA('proxy1', loc, time, value*2)
 
     # proxy data 2, 12 lines
     lon = np.arange(12).reshape(-1, 1)*120 % 360
@@ -200,7 +204,7 @@ def get_test_data():
     value = np.log((np.random.rand(12, 1) * 0.1 + 14)) + 0.2
     data_proxy2 = DATA('proxy2', loc, time, value)
 
-    return np.array([data_instru,data_proxy1 ,data_proxy2])
+    return np.array([data_instru,data_proxy1,data_proxy2])
 
 
 data = get_test_data()
