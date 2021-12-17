@@ -140,6 +140,6 @@ def defaults(opt, data=None):
     # Increases convergence but requires massive amounts memory.
     # If BARCAST exits with "Out of memory" or "Maximum variable size allowed by the program is exceeded.",
     # this option should be set to false. Default = false.
-    setDefault(opt, ['sampleCompleteField'], False)
+    setDefault(opt, ['sampleCompleteField'], True)
 
     return

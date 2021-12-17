@@ -1,6 +1,8 @@
 import copy
 import numpy as np
-from scipy.sparse import spdiags, csr_matrix
+import scipy
+from scipy.sparse import spdiags, csr_matrix, kron
+from scipy.sparse.linalg import lsqr
 from scipy.stats import norm
 
 INSTRU = 0  # so that data[INSTRU] = instrumental
@@ -115,56 +117,50 @@ def sampleTempField(data, model, params, priors):
 
     # Matlab removes elements from the top of the spdiags input vector if off diagonals are used
     # What about python?
-    AC = spdiags(np.vstack((params['alpha'] ** 2, np.ones((nrTime - 2, 1)) * (1 + params['alpha'] ** 2), 1)), 0, nrTime,
-                 nrTime) + spdiags(np.ones((nrTime, 2)) * (-1 * params['alpha']), [1, -1], nrTime, nrTime)
-    S = np.kron(AC, model['invSpatialCorrMatrix'] / params['sigma2'])
-    m = (np.sum(model['invSpatialCorrMatrix'], 1) / params['sigma2']) * np.hstack((params['alpha'] * (
-            1 - params['alpha']), (1 - params['alpha']) ** 2 * np.ones((1, nrTime - 2)), (1 - params['alpha']))) * \
+
+    AC = spdiags(np.vstack((params['alpha'] ** 2, np.ones((nrTime - 2, 1)) * (1 + params['alpha'] ** 2), 1)).reshape(-1,), 0, nrTime,
+                 nrTime) + spdiags(np.ones((2, nrTime)) * (-1 * params['alpha']), [1, -1], nrTime, nrTime)
+    S = kron(AC, model['invSpatialCorrMatrix'] / params['sigma2'])
+    m = (np.sum(model['invSpatialCorrMatrix'], 1).reshape(-1,1) / params['sigma2']) * np.hstack((params['alpha'] * (
+            1 - params['alpha']), (1 - params['alpha']) ** 2 * np.ones((nrTime - 2)), (1 - params['alpha']))) * \
         params['mu']
     m = m.transpose().reshape(-1, 1)
 
     # Add prior for the first time point
     inds = np.arange(nrLoc)
-    temp_mat = csr_matrix((np.ones(np.size(inds)) / priors['T_0'][1], (inds, inds)), dtype=np.float).todense()
-    S = S + np.pad(temp_mat, ((0, np.size(S, 0) - np.size(temp_mat, 0)), (0, np.size(S, 0) - np.size(temp_mat, 1))),
-                   constant_values=(0, 0))
-    temp_mat = csr_matrix(
-        (np.ones(np.size(inds), 1) / priors['T_0'][1] * priors['T_0'][0], (inds, np.ones(np.size(inds), 1))),
-        dtype=np.float).todense()
-    m = m + np.pad(temp_mat, ((0, np.size(m, 0) - np.size(temp_mat, 0)), (0, 0)), constant_values=(0, 0))
+    S = S + csr_matrix((np.ones(np.size(inds)) / priors['T_0'][1], (inds, inds)), shape=(np.size(S, 0), np.size(S, 0)), dtype=np.float)
+    m = m + csr_matrix((np.ones((np.size(inds))) / priors['T_0'][1] * priors['T_0'][0],
+                        (inds, np.zeros((np.size(inds))))), shape=(np.size(m, 0), 1),dtype=np.float)
 
     # Add instrumental data
-    inds = np.tile(data[INSTRU].loc_ind.transpose().reshape(-1, 1), (1, np.size(data[INSTRU].time_ind))) + np.tile(
-        data[INSTRU].time_ind.transpose().reshape(-1, 1).transpose() - 1, (np.size(data[INSTRU].loc_ind), 1)) * nrLoc
-    # mask = ~isnan(data.instrumental.data);
-    # inds = inds(mask);
-    inds = np.arrays([inds[i] for i in range(np.size(inds)) if data[INSTRU].value[i] != np.nan]).reshape(-1, 1)
-    temp_mat = csr_matrix((np.ones(np.size(inds), 1) / params['tau2_I'], (inds, inds)), dtype=np.float).todense()
-    S = S + np.pad(temp_mat, ((0, np.size(S, 0) - np.size(temp_mat, 0)), (0, np.size(S, 1) - np.size(temp_mat, 1))),
-                   constant_values=(0, 0))
-    temp_mat = csr_matrix((data[INSTRU].value[~np.isnan(data[INSTRU].value)], (inds, np.ones(np.size(inds, 0)))),
-                          dtype=np.float).todense()
-    m = m + np.pad(temp_mat, ((0, np.size(m, 0)), (0, 0)), constant_values=(0, 0))
+    inds = np.tile(np.array(data[INSTRU].loc_ind).transpose().reshape(-1, 1), (1, len(data[INSTRU].time_ind))) + np.tile(
+        np.array(data[INSTRU].time_ind).transpose().reshape(-1, 1).transpose() - 1,
+        (len(data[INSTRU].loc_ind), 1)) * nrLoc
+
+    inds = inds[:,0]
+    S = S + csr_matrix((np.ones(np.size(inds)) / params['tau2_I'], (inds, inds)), shape=(np.size(S, 0), np.size(S, 1)),
+                       dtype=np.float)
+    m = m + csr_matrix((data[INSTRU].value.reshape(-1,),
+                        (inds, np.zeros(np.size(inds)))), shape=(np.size(m, 0), 1), dtype=np.float)
 
     # Add proxy data
-    for i in range(1, len(data)):
-        inds = np.tile(data[i].loc_ind.transpose().reshape(-1, 1), (1, np.size(data[i].time_ind))) + np.tile(
-            data[i].time_ind.transpose().reshape(-1, 1).transpose() - 1, (np.size(data[i].loc_ind), 1)) * nrLoc
-        # mask = ~isnan(data.proxy{i}.data);
-        # inds = inds(mask);
-        inds = np.arrays([inds[j] for j in range(np.size(inds)) if data[i].value[j] != np.nan]).reshape(-1, 1)
-        temp_mat = csr_matrix(
-            (np.ones(np.size(inds), 1) * (params['Beta_1'][i - 1] ** 2 / params['tau2_P'][i - 1]), (inds, inds)),
-            dtype=np.float).todense()
-        S = S + np.pad(temp_mat, ((0, np.size(S, 0) - np.size(temp_mat, 0)), (0, np.size(S, 1) - np.size(temp_mat, 1))),
-                       constant_values=(0, 0))
-        temp_mat = csr_matrix((data[i].value[~np.isnan(data[i].value)] - params['Beta_0'][i - 1] / params['tau2_P'][
-            i - 1], (inds, np.ones(np.size(inds, 0)))), dtype=np.float).todense()
-        m = m + np.pad(temp_mat, ((0, np.size(m, 0)), (0, 0)), constant_values=(0, 0))
+    for i in range(len(data)-1):
+        inds = np.tile(np.array(data[INSTRU+i].loc_ind).transpose().reshape(-1, 1),
+                       (1, len(data[INSTRU+i].time_ind))) + np.tile(
+            np.array(data[INSTRU+i].time_ind).transpose().reshape(-1, 1).transpose() - 1,
+            (len(data[INSTRU+i].loc_ind), 1)) * nrLoc
+
+        inds = inds[:, 0]
+        S = S + csr_matrix((np.ones(np.size(inds))*params['Beta_1'][i]**2 / params['tau2_P'][i], (inds, inds)),
+                           shape=(np.size(S, 0), np.size(S, 1)),
+                           dtype=np.float)
+        m = m + csr_matrix(((data[INSTRU+i].value.reshape(-1,)-params['Beta_0'][i])*params['Beta_1'][i]/params['tau2_P'][i],
+                            (inds, np.zeros(np.size(inds)))), shape=(np.size(m, 0), 1), dtype=np.float)
 
     # Sample field
-    field = np.linalg.lstsq(S, m) + np.linalg.lstsq(np.linalg.cholesky(S), np.random.randn(np.size(m)))
-    field = np.reshape(field, (nrLoc, nrTime))
+    field = np.linalg.lstsq(S.todense(), m)[0] + np.linalg.lstsq(np.linalg.cholesky(S.todense()), np.random.randn(np.size(m)))[0].reshape(-1,1)
+    field = field.reshape(nrTime,nrLoc).transpose()
+
     return field
 
 

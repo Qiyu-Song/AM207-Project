@@ -55,7 +55,7 @@ class BARCAST:
         # Find which locations in proxies correspond to instrumental locations
         for prx in self.data[INSTRU + 1:]:
             loc_ind = np.argmin(earthDistances(self.data[INSTRU].locations, prx.locations), axis=0)
-            prx.loc_ind = [data[INSTRU].loc_ind[ind_] for ind_ in loc_ind]
+            prx.loc_ind = [loc_ind[ind_] for ind_ in prx.loc_ind]
             prx.locations = data[INSTRU].locations
 
         # Add a single point to the timeline according to BARCAST. Assumes times are in years AD
@@ -204,3 +204,4 @@ def get_test_data():
 data = get_test_data()
 barcast = BARCAST(data)
 barcast.initialize()
+barcast.sampler()
