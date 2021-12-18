@@ -66,7 +66,7 @@ def initialValues(data, model, options):
                 currentParams['tau2_I'] = t
                 break
 
-        if len(data)>1:
+        if len(data) > 1:
             # Initial Value for tau2_P: : draw from inverse gamma prior truncated to less than some cut off value:
             pars = options['priors']['tau2_P'][:]
             vals = np.zeros((np.size(pars, 0), 1))
