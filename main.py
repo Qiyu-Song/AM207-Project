@@ -7,13 +7,14 @@ from lib.defaults import defaults
 from lib.initialValues import initialValues
 from lib.calcSpatialCovariance import calcSpatialCovariances
 from lib.samplerFunctions import *
+import matplotlib.pyplot as plt
 
 INSTRU = 0  # so that data[INSTRU] = instrumental
 
 
 class DATA:
     def __init__(self, data_type, data_loc, data_time, data_value):
-        if len({len(data_loc), len(data_time), len(data_value)}) > 1: # length of each should be equal
+        if len({len(data_loc), len(data_time), len(data_value)}) > 1:  # length of each should be equal
             print(len(data_loc), len(data_time), len(data_value))
             raise RuntimeError("Wrong initialization for data!")
         self.type = data_type  # 'instrumental' or 'some proxy'
@@ -26,14 +27,13 @@ class DATA:
                 self.loc_ind.append(ind_)
             else:
                 self.locations.append(loc_)
-                self.loc_ind.append(len(self.locations)-1)
+                self.loc_ind.append(len(self.locations) - 1)
         self.locations = np.array(self.locations)
 
         self.time = data_time  # N size 1d array in years AD
         self.time_ind = None
 
         self.value = data_value  # temperature
-
 
 
 class BARCAST:
@@ -61,7 +61,7 @@ class BARCAST:
         # Add a single point to the timeline according to BARCAST. Assumes times are in years AD
         timeline = np.array(self.data[INSTRU].time.reshape(-1))  # from data, an 1d array
         for ist_prx in self.data:
-            timeline = np.hstack((timeline,ist_prx.time.reshape(-1)))
+            timeline = np.hstack((timeline, ist_prx.time.reshape(-1)))
         timeline = list(set(timeline))
         timeline.append(np.min(timeline) - 1)
         self.model['timeline'] = list(np.sort(timeline))
@@ -83,19 +83,10 @@ class BARCAST:
 
         self.model['invSpatialCorrMatrix'] = np.linalg.inv(self.model['spatialCorrMatrix'])
 
-        if not self.options['sampleCompleteField']:
-            # Discover missing patterns
-            self.model['missingPatterns'] = findMissingPatterns(self.data,
-                                                                np.size(self.model['timeline']))  # need implementation
-
-            # Calculate temporal covariance matrices for each missing pattern
-            if self.options['useSpatialCache']:
-                self.model['spatialCovMatrices'], self.model['sqrtSpatialCovMatrices'] = calcSpatialCovariances(
-                    self.data, self.model, self.currentParams)  # need implementation
-
         self.params[0] = copy.deepcopy(self.currentParams)
 
-        self.fields = np.zeros((self.options['samplerIterations'],self.currentField.shape[0],self.currentField.shape[1]))
+        self.fields = np.zeros(
+            (self.options['samplerIterations'], self.currentField.shape[0], self.currentField.shape[1]))
 
     def sampler(self):
         # Sample MCMC chain
@@ -103,18 +94,8 @@ class BARCAST:
         for sample in range(totalIterations):
             # Sample temperature field
 
-            if not self.options['sampleCompleteField']:
-                # Original Gibb's sampler from Tingley et al. slightly optimized.
-                self.currentField[:, 0] = sampleTemp0(self.model, self.currentParams, self.options['priors'],
-                                                      self.currentField[:, 1])
-                for i in range(1, np.size(self.currentField, 1) - 1):
-                    self.currentField[:, i] = sampleTempk(self.data, self.model, self.currentParams, i,
-                                                          self.currentField[:, i - 1], self.currentField[:, i + 1])
-                self.currentField[:, -1] = sampleTempLast(self.data, self.model, self.currentParams,
-                                                          self.currentField[:, -2])
-            else:
-                # Sample complete field at once
-                self.currentField = sampleTempField(self.data, self.model, self.currentParams, self.options['priors'])
+            # Sample complete field at once
+            self.currentField = sampleTempField(self.data, self.model, self.currentParams, self.options['priors'])
 
             # Sample autocorrelation coefficient
             self.currentParams['alpha'] = sampleAutocorrCoeff(self.model, self.currentParams, self.options['priors'],
@@ -160,10 +141,11 @@ class BARCAST:
                     self.model['spatialCovMatrices'], self.model['sqrtSpatialCovMatrices'] = calcSpatialCovariances(
                         self.data, self.model, self.currentParams)
 
-
+            # print(self.currentField)
             if sample > self.options['preSamplerIterations']:
-                if (sample-1) % 100 ==0:
-                    print('------------Samples:',sample-1 - self.options['preSamplerIterations'],'/',self.options['samplerIterations'])
+                if (sample - 1) % 100 == 0:
+                    print('------------Samples:', sample - 1 - self.options['preSamplerIterations'], '/',
+                          self.options['samplerIterations'])
                 self.params[sample - self.options['preSamplerIterations']] = copy.deepcopy(self.currentParams)
                 self.fields[sample - self.options['preSamplerIterations']] = copy.deepcopy(self.currentField)
 
@@ -172,42 +154,39 @@ class BARCAST:
 
 if __name__ == '__main__':
     print('Welcome to BARCAST Model!')
-    # How to struct input data? An example:
-    # instrumental = DATA('instrumental', loc, time, value)
-    # proxy1 = DATA('proxy1', loc, time, value)
-    # proxy2 = DATA('proxy2', loc, time, value)
-    # could have more ...
-    # data = [instrumental, proxy1, proxy2, ...]
 
+
+'''
 def get_test_data():
     # instrumental data, 15 lines
-    lon = np.arange(15).reshape(-1, 1)*72 % 360
+    lon = np.arange(15).reshape(-1, 1) * 72 % 360
     lat = np.zeros((15, 1))
     loc = np.hstack((lat, lon))
     time = np.array([101, 102, 103] * 5).reshape(5, 3).transpose().reshape(-1, 1)
-    ins_value = np.random.rand(15, 1) * 0.1 + 14
+    ins_value = np.random.rand(15, 1) * 0.1 + 100
     data_instru = DATA('instrumental', loc, time, ins_value)
 
     # proxy data 1, 10 lines
-    lon = np.arange(10).reshape(-1, 1)*180 % 360
+    lon = np.arange(10).reshape(-1, 1) * 180 % 360
     lat = np.zeros((10, 1))
     loc = np.hstack((lat, lon))
     time = np.array([100, 101, 102, 103, 104] * 2).reshape(2, 5).transpose().reshape(-1, 1)
-    value = np.exp((np.random.rand(10, 1) * 0.1 + 14)/14) + 0.2
-    data_proxy1 = DATA('proxy1', loc, time, value*2)
+    value = np.exp((np.random.rand(10, 1) * 0.1 + 14) / 14) + 0.2
+    data_proxy1 = DATA('proxy1', loc, time, value * 2)
 
     # proxy data 2, 12 lines
-    lon = np.arange(12).reshape(-1, 1)*120 % 360
+    lon = np.arange(12).reshape(-1, 1) * 120 % 360
     lat = np.zeros((12, 1))
     loc = np.hstack((lat, lon))
     time = np.array([99, 100, 101, 102] * 3).reshape(3, 4).transpose().reshape(-1, 1)
     value = np.log((np.random.rand(12, 1) * 0.1 + 14)) + 0.2
     data_proxy2 = DATA('proxy2', loc, time, value)
 
-    return np.array([data_instru,data_proxy1,data_proxy2])
+    return np.array([data_instru, data_proxy1, data_proxy2])
 
 
 data = get_test_data()
 barcast = BARCAST(data)
 barcast.initialize()
 barcast.sampler()
+'''
