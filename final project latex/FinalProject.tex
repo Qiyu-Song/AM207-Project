@@ -1,0 +1,186 @@
+\documentclass[12pt, letterpaper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+
+\title{Title}
+\author{Yuchuang \thanks{funded by ...}}
+\date{December 2021}
+
+\begin{document}
+	
+\appendix
+\section{Appendix: Priors and Posteriors}
+These part show prior and conditional posterior $X|\cdot$ for all variables $X$
+
+\subsection{$T_0$}
+Prior is multivariate normal
+\begin{equation}
+	\sim N\left(\mu_{0}, \mathbf{\Sigma_0}\right)
+\end{equation}
+Posterior is multivariate normal
+\begin{equation}
+	\sim N(\Psi_0V_0,\Psi_0)
+\end{equation} 
+where
+\begin{align}
+\mathbf{V}_{0}&=\mathbf{\Sigma}^{-1}\left[\alpha \mathbf{T}_{1}-\alpha(1-\alpha) \mu \mathbf{1}\right]+\mathbf{\Sigma}_{0}^{-1} \mu_{\mathbf{0}}\\
+\boldsymbol{\Psi}_{0}&=\left(\alpha^{2} \boldsymbol{\Sigma}^{-1}+\boldsymbol{\Sigma}_{\mathbf{0}}^{-1}\right)^{-1}
+\end{align}
+
+
+\subsection{$T_k$}
+Posterior is multivariate normal (here $0<k<\kappa$)
+\begin{equation}
+	\sim N(\Psi_kV_k,\Psi_k)
+\end{equation} 
+where
+\begin{align}
+\mathbf{V}_{k}&= \mathbf{H}_{k}^{\mathrm{T}} \mathbf{\Xi}_{k}^{-1}\left(\mathbf{W}_{k}-\mathbf{B}_{k}\right)+\mathbf{\Sigma}^{-1}\left[\alpha\left(\mathbf{T}_{k+1}+\mathbf{T}_{k-1}\right)\right.\left.+(1-\alpha)^{2} \mu \mathbf{1}\right]\\
+\boldsymbol{\Psi}_{k}&=\left[\mathbf{H}_{k}^{\mathrm{T}} \boldsymbol{\Xi}_{k}^{-1} \mathbf{H}_{k}+\left(1+\alpha^{2}\right) \mathbf{\Sigma}^{-1}\right]^{-1}
+\end{align}
+
+\subsection{$T_\kappa$}
+
+Posterior is multivariate normal
+\begin{equation}
+	\sim N(\Psi_kV_\kappa,\Psi_\kappa)
+\end{equation} 
+where
+\begin{align}
+\mathbf{V}_{\kappa}&=\mathbf{H}_{\kappa}^{\mathrm{T}} \Xi_{\kappa}^{-1}\left(\mathbf{W}_{\kappa}-\mathbf{B}_{\kappa}\right)+\mathbf{\Sigma}^{-1}\left[\alpha \mathbf{T}_{\kappa-1}+(1-\alpha) \mu \mathbf{1}\right]\\
+\boldsymbol{\Psi}_{\kappa}&=\left(\mathbf{H}_{\kappa}^{\mathrm{T}} \boldsymbol{\Xi}_{\kappa}^{-1} \mathbf{H}_{\kappa}+\boldsymbol{\Sigma}^{-1}\right)^{-1}
+\end{align}
+
+\subsection{$\alpha$}
+Prior is uniform
+\begin{equation}
+	\sim U(a_0,a_1)
+\end{equation} 
+Posterior is truncated normal
+\begin{equation}
+\sim N_{\left[a_{0}, a_{1}\right]}\left(\Psi_{\alpha} V_{\alpha}, \Psi_{\alpha}\right)
+\end{equation}
+where
+\begin{align}
+V_{\alpha}&=\sum_{k=1}^{\kappa}\left(\mathbf{T}_{k-1}-\mu \mathbf{1}\right)^{\mathrm{T}} \mathbf{\Sigma}^{-1}\left(\mathbf{T}_{k}-\mu \mathbf{1}\right)\\
+\Psi_{\alpha}&=\left[\sum_{k=1}^{\kappa}\left(\mathbf{T}_{k-1}-\mu \mathbf{1}\right)^{\mathrm{T}} \mathbf{\Sigma}^{-1}\left(\mathbf{T}_{k-1}-\mu \mathbf{1}\right)\right]^{-1}
+\end{align}
+and boundaries $a_{0}, a_{1}$ come from uniform prior
+
+
+\subsection{$\mu$}
+Prior is normal
+\begin{equation}
+	\sim N\left(\mu_{0}, \sigma_{0}^{2}\right)
+\end{equation}
+Posterior is normal
+\begin{equation}
+	\sim N\left(\Psi_{\mu} V_{\mu}, \Psi_{\mu}\right)
+\end{equation}
+where
+\begin{align}
+&V_{\mu}=\frac{\mu_{0}}{\sigma_{0}^{2}}+(1-\alpha) \mathbf{1}^{\mathrm{T}} \mathbf{\Sigma}^{-1}\left[\sum_{k=1}^{\kappa}\left(\mathbf{T}_{k}-\alpha \mathbf{T}_{k-1}\right)\right] \\
+&\Psi_{\mu}=\left(\frac{1}{\sigma_{0}^{2}}+\kappa(1-\alpha)^{2} \mathbf{1}^{\mathrm{T}} \mathbf{\Sigma}^{-1} \mathbf{1}\right)^{-1}
+\end{align}
+
+\subsection{$\sigma^2$}
+Prior is inverse-gamma
+\begin{equation}
+	\sim InvGamma \left(\lambda_{T}, \nu_{T}\right)
+\end{equation}
+Posterior is inverse-gamma
+\begin{equation}
+\sim InvGamma\left(\lambda_{T}+\frac{N_{A} \kappa}{2},
+\nu_{T}+\frac{1}{2} \sum_{k=1}^{\kappa} \Delta \mathbf{T}_{k, k-1}^{\mathrm{T}} \mathbf{R}^{-1} \Delta \mathbf{T}_{k, k-1}\right)
+\end{equation}
+where
+\begin{align}
+\Delta \mathbf{T}_{k, k-1}&=\left(\mathbf{T}_{k}-\alpha \mathbf{T}_{k-1}-(1-\alpha) \mu \mathbf{1}\right)\\
+\mathbf{R}_{i j}&=\exp \left(-\phi\left|\mathbf{x}_{i}-\mathbf{x}_{j}\right|\right)
+\end{align}
+
+\subsection{$\phi$}
+Prior is log normal
+\begin{equation}
+	\sim logNormal\left(\mu_{\phi}, \sigma_{\phi}^{2}\right)
+\end{equation}
+Posterior is not analytically distributed. Its probability density function is 
+\begin{equation}
+P(\phi \mid \cdot) \propto P(\phi) \cdot|\mathbf{R}|^{-\kappa / 2} \cdot \exp \left(-\frac{1}{2 \sigma^{2}} \sum_{k=1}^{\kappa} \Delta \mathbf{T}_{k, k-1}^{\mathrm{T}} \mathbf{R}^{-1} \Delta \mathbf{T}_{k, k-1}\right)
+\end{equation}
+
+Since the prior of $\phi$ is log normal, it is more convenient to sample from $\log(\phi)$. We use transformation $\Phi \equiv \log(\phi)$, and posterior for $\Phi$ is
+\begin{align}
+P(\Phi \mid \cdot) \propto|\mathbf{R}|^{-\kappa / 2} \cdot  \exp \left(\frac{-\left(\Phi-\mu_{\phi}\right)^{2}}{2 \sigma_{\phi}^{2}}-\frac{1}{2 \sigma^{2}} \sum_{k=1}^{\kappa} \Delta \mathbf{T}_{k, k-1}^{\mathrm{T}} \mathbf{R}^{-1} \Delta \mathbf{T}_{k, k-1}\right)
+\end{align}
+
+We use Metropolis sampling in this step, and trial values are normal distributions
+\begin{equation}
+\Phi^{*} \mid \Phi_{t-1} \sim N\left(\Phi_{t-1}, \sigma_{\Phi, M H}^{2}\right)
+\end{equation}
+
+\subsection{$\tau_I^2$}
+Prior is inverse-gamma
+\begin{equation}
+	\sim InvGamma \left(\lambda_{I}, \nu_{I}\right)
+\end{equation}
+Posterior is inverse-gamma
+\begin{align}
+\sim  InvGamma \left(\lambda_{I}+\frac{M_{I}}{2}, \nu_{I}+\frac{1}{2} \sum_{k=1}^{k} \mathbf{r}_{I, k}^{\mathrm{T}} \mathbf{r}_{I, k}\right)
+\end{align}
+where
+\begin{equation}
+\mathbf{r}_{I, k}=\mathbf{W}_{I, k}-\left[\mathbf{H}_{k} \mathbf{T}_{k}+\mathbf{B}_{k}\right]_{I}
+\end{equation}
+
+\subsection{$\tau_P^2$}
+Prior is inverse-gamma
+\begin{equation}
+	\sim InvGamma \left(\lambda_{P}, \nu_{P}\right)
+\end{equation}
+Posterior is inverse-gamma
+\begin{equation}
+\sim  invGamma \left(\lambda_{P}+\frac{M_{P}}{2}, \nu_{P}+\frac{1}{2} \sum_{k=1}^{\kappa} \mathbf{r}_{P, k}^{\mathrm{T}} \mathbf{r}_{P, k}\right)
+\end{equation}
+where
+\begin{equation}
+\mathbf{r}_{P, k}=\mathbf{W}_{P, k}-\left[\mathbf{H}_{k} \mathbf{T}_{k}+\mathbf{B}_{k}\right]_{P}
+\end{equation}
+
+\subsection{$\beta_1$}
+Prior is normal
+\begin{equation}
+	\sim N\left(\eta_{1}, \delta_{1}^{2}\right)
+\end{equation}
+where
+\begin{equation}
+	\eta_{1}=\left[\frac{\left(1-\tau_{P}^{2}\right)\left(1-\alpha^{2}\right)}{\sigma^{2}}\right]^{-1 / 2}
+\end{equation}
+Posterior is normal
+\begin{equation}
+	\sim N\left(\Psi_{\beta_{1}} V_{\beta_{0}}, \Psi_{\beta_{1}}\right)
+\end{equation}
+where
+\begin{align}
+&V_{\beta_{1}}=\frac{\eta_{1}}{\delta_{1}^{2}}+\frac{1}{\tau_{P}^{2}} \sum_{k=1}^{\kappa} \mathbf{T}_{k}^{\mathrm{T}}\left(\mathbf{W}_{P, k}-\beta_{0} \mathbf{1}_{N_{P, k}}\right) \\
+&\Psi_{\beta_{1}}=\left(\frac{1}{\delta_{1}^{2}}+\frac{1}{\tau_{P}^{2}} \sum_{k=1}^{\kappa} \mathbf{T}_{P, k}^{\mathrm{T}} \mathbf{T}_{P, k}\right)^{-1}
+\end{align}
+
+\subsection{$\beta_0$}
+Prior is normal
+\begin{equation}
+	\sim N\left(\eta_{0}, \delta_{0}^{2}\right)
+\end{equation}
+where $\eta_{0}=-\mu_0\eta_{1}$ is the negative of the product of prior means
+for $\mu$ and $\beta_1$\\
+Posterior is normal
+\begin{equation}
+	\sim N\left(\Psi_{\beta_{0}} V_{\beta_{0}}, \Psi_{\beta_{0}}\right)
+\end{equation}
+where
+\begin{align}
+&V_{\beta_{0}}=\frac{\eta_{0}}{\delta_{0}^{2}}+\frac{1}{\tau_{P}^{2}} \sum_{k=1}^{\kappa} \mathbf{1}_{N_{P, k}}^{\mathrm{T}}\left(\mathbf{W}_{P, k}-\beta_{1} \mathbf{H}_{P, k} \mathbf{T}_{k}\right) \\
+&\Psi_{\beta_{0}}=\left(\frac{1}{\delta_{0}^{2}}+\frac{M_{P}}{\tau_{P}^{2}}\right)^{-1}
+\end{align}
+
+\end{document}

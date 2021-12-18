@@ -6,7 +6,7 @@ INSTRU = 0  # so that data[INSTRU] = instrumental
 def setDefault(opt, field, default):
     val = default
     for field_name in field:
-        print(field_name, opt)
+        # print(field_name, opt)
         if field_name in opt:
             opt = opt[field_name]
         else:
@@ -39,14 +39,14 @@ def defaults(opt, data=None):
 
     # Prior distribution parameters for the mean of temperature field.
     # Defines the mean and variance of gaussian distribution.
-    if data:
+    if data is not None:
         setDefault(opt, ['priors', 'mu'], [np.nanmean(data[INSTRU].value[:]), 5 ** 2])
     else:
         setDefault(opt, ['priors', 'mu'], [0, 5 ** 2])
 
     # Prior distribution parameters for the partial sill of the spatial covariance matrix of the innovations that
     # drive the AR(1) process. Defines the shift and scale, resp., of inverse gamma distribution.
-    setDefault(opt, ['priors' 'sigma2'], [0.5, 0.5])
+    setDefault(opt, ['priors', 'sigma2'], [0.5, 0.5])
     # This is equivalent to 1 observations with an average square deviation of 2
     # Very general, broad prior.
     # note, calling the pars a and b, and the pars of the scaled inverse chi^2
@@ -55,7 +55,7 @@ def defaults(opt, data=None):
 
     # Prior distribution paramaters for the inverse range of this spatial covariance matrix. Defines the log-mean and
     # log-variance of the lognormal distribution.
-    setDefault(opt, ['priors' 'phi'], [-4.65, 1.2])
+    setDefault(opt, ['priors', 'phi'], [-4.65, 1.2])
     # RECALL we are using a log transformation in the Metropolis sampler for
     # this step, so the prior is log normal. There are nine data points evenly
     # space by about 111km. A largely uninformative prior would specify the
@@ -64,15 +64,15 @@ def defaults(opt, data=None):
 
     # Prior distribution parameters for the error variance of instrumental observations. Defines the shift and scale,
     # resp., of inverse gamma distribution.
-    setDefault(opt, ['priors' 'tau2_I'], [0.5, 0.5])
+    setDefault(opt, ['priors', 'tau2_I'], [0.5, 0.5])
     # This is equivalent to 1 observations (nu=2*a) with an average square deviation of 1 (s^2=a/b)
 
     # Prior distribution parameters for the error variance of proxy observations. Defines the shift and scale, resp.,
     # of inverse gamma distribution.'];
-    if data:
-        setDefault(opt, ['priors' 'tau2_P'], np.array([[0.5, 0.5]] * len(data[INSTRU + 1:])))
+    if data is not None:
+        setDefault(opt, ['priors', 'tau2_P'], np.array([[0.5, 0.5]] * len(data[INSTRU + 1:])))
     else:
-        setDefault(opt, ['priors' 'tau2_P'], [0.5, 0.5])
+        setDefault(opt, ['priors', 'tau2_P'], [0.5, 0.5])
     # This is equivalent to 1 observations (nu=2*alpha) with an average square deviation of 2
 
     # Prior distribution parameters for the scaling of proxy observations.
@@ -80,31 +80,31 @@ def defaults(opt, data=None):
     # This one is normal as well. IF THE PROXIES HAVE BEEN PRE-PROCSSES TO HAVE MEAN=0, STD=1, THEN Hypothetically,
     # the scaling should be (1-tau_P^2)(1-alpha^2)/sigma^2)^(+1/2). So set the mean to the modes of these priors,
     # and then include a decent sized variance.
-    if data:
-        setDefault(opt, ['priors' 'Beta_1'], [np.reshape(((1 - opt['priors']['tau2_P'][:, 1] / (
+    if len(data)>1:
+        setDefault(opt, ['priors', 'Beta_1'], np.array([np.reshape(((1 - opt['priors']['tau2_P'][:, 1] / (
                 opt['priors']['tau2_P'][:, 0] + 1)) * (1 - np.mean(opt['priors']['alpha']) ** 2) / (
                                                                   opt['priors']['sigma2'][1] / (
                                                                   opt['priors']['sigma2'][0] + 1))) ** (1 / 2),
                                                          (-1, 1)),
-                                              np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2])
+                                              np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2]))
     else:
-        setDefault(opt, ['priors' 'Beta_1'], [1, 8 ** 2])
+        setDefault(opt, ['priors', 'Beta_1'], np.array([1, 8 ** 2]))
 
     # Prior distribution parameters for the shift of proxy observations.
     # Defines the mean and variance of normal distribution. Should be equal to the prior of mu.
     # Prior for Beta_0. SET EQUAL TO THE PRIOR FOR MU
-    if data:
-        setDefault(opt, ['priors' 'Beta_0'], [-opt['priors']['Beta_1'][:, 0] * opt['priors']['mu'][0],
-                                              np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2])
+    if len(data)>1:
+        setDefault(opt, ['priors', 'Beta_0'], np.array([-opt['priors']['Beta_1'][:][0] * opt['priors']['mu'][0],
+                                              np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2]))
     else:
-        setDefault(opt, ['priors' 'Beta_0'], [opt['priors']['mu'][0], 8 ** 2])
+        setDefault(opt, ['priors', 'Beta_0'], np.array([opt['priors']['mu'][0], 8 ** 2]))
 
     # Prior distribution parameters for the temperature field.
     # Defines the mean and variance of normal distribution.
-    if data:
-        setDefault(opt, ['priors' 'T_0'], [np.nanmean(data[INSTRU].value[:]), 4 * np.nanvar(data[INSTRU].value[:])])
+    if data is not None:
+        setDefault(opt, ['priors', 'T_0'], [np.nanmean(data[INSTRU].value[:]), 4 * np.nanvar(data[INSTRU].value[:])])
     else:
-        setDefault(opt, ['priors' 'T_0'], [0, 8 ** 2])
+        setDefault(opt, ['priors', 'T_0'], [0, 8 ** 2])
 
     # with mean given by mean of all inst and standard deviation 2 times the std of all Inst.
     # So the prior parameters (mean, var) are:
@@ -122,7 +122,7 @@ def defaults(opt, data=None):
     # Until the algorithm settles down, this will take a little while.
     # NOTE that this step is not time consuming.
     # First par is variance, second is number.
-    setDefault(opt, ['MHpars' 'log_phi'], [.04**2, 100])
+    setDefault(opt, ['MHpars', 'log_phi'], [.04**2, 100])
 
     # Number of consecutive samples from the bayesian model.
     setDefault(opt, ['samplerIterations'], 2000)
@@ -140,8 +140,6 @@ def defaults(opt, data=None):
     # Increases convergence but requires massive amounts memory.
     # If BARCAST exits with "Out of memory" or "Maximum variable size allowed by the program is exceeded.",
     # this option should be set to false. Default = false.
-    setDefault(opt, ['sampleCompleteField'], False)
+    setDefault(opt, ['sampleCompleteField'], True)
 
     return
-
-test()
