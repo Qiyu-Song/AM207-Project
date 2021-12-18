@@ -5,7 +5,6 @@ import copy
 from lib.earthDistances import earthDistances
 from lib.defaults import defaults
 from lib.initialValues import initialValues
-from lib.calcSpatialCovariance import calcSpatialCovariances
 from lib.samplerFunctions import *
 import matplotlib.pyplot as plt
 
@@ -115,7 +114,7 @@ class BARCAST:
                                                                        self.options['priors'], self.options['MHpars'],
                                                                        self.currentField)
 
-            if sample > self.options['preSamplerIterations']:
+            if sample >= self.options['preSamplerIterations']:
                 # Sample instrumental measurement error variance
                 self.currentParams['tau2_I'] = sampleInstrumentalErrorVar(self.data, self.options['priors'],
                                                                           self.currentField)
@@ -141,10 +140,9 @@ class BARCAST:
                     self.model['spatialCovMatrices'], self.model['sqrtSpatialCovMatrices'] = calcSpatialCovariances(
                         self.data, self.model, self.currentParams)
 
-            # print(self.currentField)
-            if sample > self.options['preSamplerIterations']:
-                if (sample - 1) % 100 == 0:
-                    print('------------Samples:', sample - 1 - self.options['preSamplerIterations'], '/',
+            if sample >= self.options['preSamplerIterations']:
+                if (sample + 1) % 100 == 0:
+                    print('------------Samples:', sample + 1 - self.options['preSamplerIterations'], '/',
                           self.options['samplerIterations'])
                 self.params[sample - self.options['preSamplerIterations']] = copy.deepcopy(self.currentParams)
                 self.fields[sample - self.options['preSamplerIterations']] = copy.deepcopy(self.currentField)
@@ -152,41 +150,59 @@ class BARCAST:
         print('Sampling finished!')
 
 
+def get_test_data():
+    # instrumental data, 1 loc 50 time points
+    lon = np.array(list(np.random.rand(1) * 40 + 50) * 50).reshape(-1, 1)
+    lat = np.array(list(np.random.rand(1) * 40 + 30) * 50).reshape(-1, 1)
+    loc = np.hstack((lat, lon))
+    time = np.arange(50).reshape(-1, 1)
+    # linear increasing time series
+    ins_value = np.random.rand(50).reshape(-1, 1) * 0.1 + 14 + time * 0.1
+    # non linear time series
+    # ins_value = np.random.rand(50).reshape(-1, 1) * 0.1 + 14 + 2 * np.sin(np.pi * time / 50)
+    data_instru = DATA('instrumental', loc, time, ins_value.reshape(-1, 1))
+
+    # proxy data 1, linear transformation from instrumental data
+    data_proxy1 = DATA('proxy1', loc, time, ins_value * 2 + 1)
+
+    # proxy data 2, non-linear transformation from instrumental data
+    data_proxy2 = DATA('proxy2', loc, time, 4 * np.log(ins_value))
+
+    '''
+    # test spatial covariance
+    N = 20
+    lon = np.random.randn(N, 1) * np.arange(N).reshape(-1, 1) * 20 / N
+    lat = np.random.randn(N, 1) * np.arange(N).reshape(-1, 1) * 20 / N
+    loc = np.hstack((lat, lon))
+    time = np.array([100] * N)
+    ins_value = np.random.randn(N, 1) * 0.1 + lon * 0.1
+    data_instru = DATA('instrumental', loc, time, ins_value)
+    '''
+
+    return np.array([data_instru, data_proxy1])
+
+
 if __name__ == '__main__':
     print('Welcome to BARCAST Model!')
+    data = get_test_data()
+    barcast = BARCAST(data)
+    barcast.initialize()
+    barcast.sampler()
 
+    # an example of plotting fitted mean temperature field time series
+    field_for_plot = barcast.fields[-200:-1:2]
+    mean_time_series = field_for_plot.mean(axis=1)
+    time = barcast.model['timeline']
 
-'''
-def get_test_data():
-    # instrumental data, 15 lines
-    lon = np.arange(15).reshape(-1, 1) * 72 % 360
-    lat = np.zeros((15, 1))
-    loc = np.hstack((lat, lon))
-    time = np.array([101, 102, 103] * 5).reshape(5, 3).transpose().reshape(-1, 1)
-    ins_value = np.random.rand(15, 1) * 0.1 + 100
-    data_instru = DATA('instrumental', loc, time, ins_value)
-
-    # proxy data 1, 10 lines
-    lon = np.arange(10).reshape(-1, 1) * 180 % 360
-    lat = np.zeros((10, 1))
-    loc = np.hstack((lat, lon))
-    time = np.array([100, 101, 102, 103, 104] * 2).reshape(2, 5).transpose().reshape(-1, 1)
-    value = np.exp((np.random.rand(10, 1) * 0.1 + 14) / 14) + 0.2
-    data_proxy1 = DATA('proxy1', loc, time, value * 2)
-
-    # proxy data 2, 12 lines
-    lon = np.arange(12).reshape(-1, 1) * 120 % 360
-    lat = np.zeros((12, 1))
-    loc = np.hstack((lat, lon))
-    time = np.array([99, 100, 101, 102] * 3).reshape(3, 4).transpose().reshape(-1, 1)
-    value = np.log((np.random.rand(12, 1) * 0.1 + 14)) + 0.2
-    data_proxy2 = DATA('proxy2', loc, time, value)
-
-    return np.array([data_instru, data_proxy1, data_proxy2])
-
-
-data = get_test_data()
-barcast = BARCAST(data)
-barcast.initialize()
-barcast.sampler()
-'''
+    figure, ax = plt.subplots(1, 1)
+    up = np.percentile(mean_time_series, 97.5, axis=0)
+    lo = np.percentile(mean_time_series, 2.5, axis=0)
+    ax.fill_between(time, up, lo, color='red', alpha=0.3, label='95% interval')
+    ax.scatter(list(time[1:]), data[INSTRU].value, color='k', label='data point')
+    ax.legend()
+    ax.set_xlabel('Time Points')
+    ax.set_ylabel('Temperature (degree C)')
+    ax.set_title('Fitting time series')
+    ax.set_xlim(time[1] - 0.05, time[-1] + 0.05)
+    ax.set_ylim(10, 25)
+    plt.show()
