@@ -18,17 +18,6 @@ def setDefault(opt, field, default):
     return
 
 
-'''
-def test():
-    options = {'hahaha': 'hehehe', 'number': 114514, 'priors': {'beta': 0, 'alpha': [1, 2]}}
-    # options = {}
-    setDefault(options, ['priors', 'alpha'], [0, 1])
-    print(options['priors']['alpha'])
-    print(options)
-    return
-'''
-
-
 def defaults(opt, data=None):
     # I guess we don't need the 'info' part for now
     # Assign priors and MCMC default values for the given data
@@ -80,22 +69,23 @@ def defaults(opt, data=None):
     # This one is normal as well. IF THE PROXIES HAVE BEEN PRE-PROCSSES TO HAVE MEAN=0, STD=1, THEN Hypothetically,
     # the scaling should be (1-tau_P^2)(1-alpha^2)/sigma^2)^(+1/2). So set the mean to the modes of these priors,
     # and then include a decent sized variance.
-    if len(data)>1:
+    if len(data) > 1:
         setDefault(opt, ['priors', 'Beta_1'], np.array([np.reshape(((1 - opt['priors']['tau2_P'][:, 1] / (
                 opt['priors']['tau2_P'][:, 0] + 1)) * (1 - np.mean(opt['priors']['alpha']) ** 2) / (
-                                                                  opt['priors']['sigma2'][1] / (
-                                                                  opt['priors']['sigma2'][0] + 1))) ** (1 / 2),
-                                                         (-1, 1)),
-                                              np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2]))
+                                                                            opt['priors']['sigma2'][1] / (
+                                                                            opt['priors']['sigma2'][0] + 1))) ** (
+                                                                               1 / 2),
+                                                                   (-1, 1)),
+                                                        np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2]))
     else:
         setDefault(opt, ['priors', 'Beta_1'], np.array([1, 8 ** 2]))
 
     # Prior distribution parameters for the shift of proxy observations.
     # Defines the mean and variance of normal distribution. Should be equal to the prior of mu.
     # Prior for Beta_0. SET EQUAL TO THE PRIOR FOR MU
-    if len(data)>1:
+    if len(data) > 1:
         setDefault(opt, ['priors', 'Beta_0'], np.array([-opt['priors']['Beta_1'][:][0] * opt['priors']['mu'][0],
-                                              np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2]))
+                                                        np.ones((len(data[INSTRU + 1:]), 1)) * 8 ** 2]))
     else:
         setDefault(opt, ['priors', 'Beta_0'], np.array([opt['priors']['mu'][0], 8 ** 2]))
 
@@ -122,13 +112,13 @@ def defaults(opt, data=None):
     # Until the algorithm settles down, this will take a little while.
     # NOTE that this step is not time consuming.
     # First par is variance, second is number.
-    setDefault(opt, ['MHpars', 'log_phi'], [.04**2, 100])
+    setDefault(opt, ['MHpars', 'log_phi'], [.04 ** 2, 100])
 
     # Number of consecutive samples from the bayesian model.
-    setDefault(opt, ['samplerIterations'], 2000)
+    setDefault(opt, ['samplerIterations'], 4000)
 
     # Number of times to update only the temperature array before beginning to update the other parameters.
-    setDefault(opt, ['preSamplerIterations'], 500)
+    setDefault(opt, ['preSamplerIterations'], 2000)
 
     # Use modes of priors as inital values for MCMC sampling.
     setDefault(opt, ['useModes'], False)

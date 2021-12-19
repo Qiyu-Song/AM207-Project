@@ -8,41 +8,6 @@ from scipy.stats import norm
 INSTRU = 0  # so that data[INSTRU] = instrumental
 
 
-def sampleTemp0(model, params, priors, nextField):
-    # MCMC sample values for the field
-    n = np.size(nextField)
-    C = (params['alpha'] ** 2 / params['sigma2'] * model['invSpatialCorrMatrix'] + np.eye(n) / priors['T_0'][1]) ** (
-            -1 / 2)
-    A = model['invSpatialCorrMatrix'].dot(
-        params['alpha'] * nextField - params['alpha'] * (1 - params['alpha']) * (params['mu'] * np.ones((n, 1))))
-    A = A + np.ones((n, 1)) / priors['T_0'][1] * priors['T_0'][0]
-    A = C.dot(np.transpose(C)).dot(A)
-    field = A + C.dot(np.random.randn(n, 1))
-    return field
-
-
-def calcSingleSpatialCovariance(data, model, params, timePattern):
-    pattern = model['missingPatterns']['timePatterns'][timePattern, :]
-    C = np.zeros((np.size(data[INSTRU].locations, 1), 1))
-    for j in range(np.size(pattern)):
-        if pattern[j] == 0:
-            # The data does not cover this pattern
-            continue
-        inputPattern = model['missingPatterns']['dataPatterns'][j][pattern[j]]
-        if j == 1:
-            # For instrumental data, pattern contains the indices of the
-            # locations that have data for timePattern
-            C[inputPattern] = C[inputPattern] + 1 / params['tau2_I']
-        else:
-            C[inputPattern['locationIndices']] = C[inputPattern['locationIndices']] + sum(inputPattern['locationMap'],
-                                                                                          1) * params['Beta_1'][
-                                                     j - 1] ** 2 / params['tau2_P'][j - 1]
-
-    invCC = model['invSpatialCorrMatrix'] * (1 + params['alpha'] ** 2) / params['sigma2'] + np.diag(C)
-    sqInvCC = np.linalg.cholesky(invCC)
-    return invCC, sqInvCC
-
-
 def sampleTempField(data, model, params, priors):
     nrTime = np.size(model['timeline'])
     nrLoc = np.size(model['spatialCorrMatrix'], 0)
